@@ -7,7 +7,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { UserModal } from '@/components/users/user-modal'
 import { User } from '@/types'
 import { useUsers, useUserStats } from '@/hooks/useUsers'
-import { seedUserData } from '@/lib/users'
 
 // SNSアイコンマッピング
 const snsIcons = {
@@ -164,8 +163,8 @@ export default function UsersPage() {
   const handleSeedData = async () => {
     try {
       setSeeding(true)
-      await seedUserData()
-      alert('サンプル利用者データを作成しました！')
+      // サンプルデータ作成機能は削除されました
+      alert('サンプルデータ作成機能は削除されました。手動でユーザーを追加してください。')
     } catch (err) {
       alert('データの作成中にエラーが発生しました: ' + (err instanceof Error ? err.message : '不明なエラー'))
     } finally {
