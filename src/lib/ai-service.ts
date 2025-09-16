@@ -1,10 +1,18 @@
 import OpenAI from 'openai'
 
-// OpenAI クライアントの初期化
-const openai = new OpenAI({
-  apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY || process.env.OPENAI_API_KEY,
-  dangerouslyAllowBrowser: true // クライアントサイドでの使用を許可
-})
+// OpenAI クライアントの初期化（動的APIキー対応）
+const getOpenAIClient = (apiKey?: string) => {
+  const key = apiKey || process.env.NEXT_PUBLIC_OPENAI_API_KEY || process.env.OPENAI_API_KEY
+  
+  if (!key) {
+    throw new Error('OpenAI APIキーが設定されていません')
+  }
+  
+  return new OpenAI({
+    apiKey: key,
+    dangerouslyAllowBrowser: true // クライアントサイドでの使用を許可
+  })
+}
 
 // AI設定
 const AI_CONFIG = {
@@ -36,9 +44,11 @@ export async function sendChatMessage(
     model?: string
     maxTokens?: number
     temperature?: number
+    apiKey?: string
   }
 ): Promise<AIResponse> {
   try {
+    const openai = getOpenAIClient(options?.apiKey)
     const response = await openai.chat.completions.create({
       model: options?.model || AI_CONFIG.model,
       messages: messages,
@@ -100,20 +110,21 @@ export class AdminAIAssistant {
   }
 
   // 一般的な質問への回答
-  async askQuestion(question: string): Promise<AIResponse> {
+  async askQuestion(question: string, apiKey?: string): Promise<AIResponse> {
     const messages: AIMessage[] = [
       { role: 'system', content: this.systemPrompt },
       { role: 'user', content: question }
     ]
 
-    return sendChatMessage(messages)
+    return sendChatMessage(messages, { apiKey })
   }
 
   // プロンプト作成支援
   async generatePrompt(
     purpose: string,
     context: string,
-    requirements: string[]
+    requirements: string[],
+    apiKey?: string
   ): Promise<AIResponse> {
     const prompt = `以下の条件でプロンプトテンプレートを作成してください:
 
@@ -126,13 +137,14 @@ export class AdminAIAssistant {
 2. 変数の説明
 3. 使用例`
 
-    return this.askQuestion(prompt)
+    return this.askQuestion(prompt, apiKey)
   }
 
   // データ分析支援
   async analyzeKPIData(
     metrics: any[],
-    question: string
+    question: string,
+    apiKey?: string
   ): Promise<AIResponse> {
     const dataContext = `KPIデータ:
 ${JSON.stringify(metrics, null, 2)}
@@ -141,14 +153,15 @@ ${JSON.stringify(metrics, null, 2)}
 
 このデータを分析して、具体的なインサイトとアクションアイテムを提案してください。`
 
-    return this.askQuestion(dataContext)
+    return this.askQuestion(dataContext, apiKey)
   }
 
   // 通知文作成支援
   async generateNotification(
     type: string,
     target: string,
-    purpose: string
+    purpose: string,
+    apiKey?: string
   ): Promise<AIResponse> {
     const prompt = `以下の条件で通知文を作成してください:
 
@@ -161,13 +174,14 @@ ${JSON.stringify(metrics, null, 2)}
 2. 本文（適切な敬語で丁寧に）
 3. アクションボタンのテキスト（必要に応じて）`
 
-    return this.askQuestion(prompt)
+    return this.askQuestion(prompt, apiKey)
   }
 
   // システム運用支援
   async getOperationAdvice(
     situation: string,
-    currentMetrics?: any
+    currentMetrics?: any,
+    apiKey?: string
   ): Promise<AIResponse> {
     let prompt = `システム運用の相談:
 状況: ${situation}`
@@ -181,7 +195,7 @@ ${JSON.stringify(metrics, null, 2)}
 
 具体的な改善案とアクションプランを提案してください。`
 
-    return this.askQuestion(prompt)
+    return this.askQuestion(prompt, apiKey)
   }
 }
 
@@ -190,7 +204,7 @@ export const adminAI = new AdminAIAssistant()
 
 // AI機能の可用性チェック
 export function isAIAvailable(): boolean {
-  return !!(process.env.NEXT_PUBLIC_OPENAI_API_KEY || process.env.OPENAI_API_KEY)
+  return !!(process.env.NEXT_PUBLIC_OPENAI_API_KEY || process.env.OPENAI_API_KEY || (typeof window !== 'undefined' && (window as any).OPENAI_API_KEY))
 }
 
 // AI使用量の推定
