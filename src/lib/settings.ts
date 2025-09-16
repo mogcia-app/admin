@@ -57,23 +57,32 @@ const COLLECTIONS = {
 // システム設定の取得
 export async function getSystemSettings(category?: string): Promise<SystemSettings[]> {
   try {
-    let q = query(collection(db, COLLECTIONS.SYSTEM_SETTINGS), orderBy('category'), orderBy('key'))
+    // 複合インデックスエラーを避けるため、シンプルなクエリに変更
+    let q = query(collection(db, COLLECTIONS.SYSTEM_SETTINGS))
     
     if (category) {
       q = query(
         collection(db, COLLECTIONS.SYSTEM_SETTINGS),
-        where('category', '==', category),
-        orderBy('key')
+        where('category', '==', category)
       )
     }
 
     const querySnapshot = await getDocs(q)
     
-    return querySnapshot.docs.map(doc => ({
+    // クライアントサイドでソート
+    const settings = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
       updatedAt: doc.data().updatedAt?.toDate?.()?.toISOString() || doc.data().updatedAt,
     })) as SystemSettings[]
+
+    // categoryとkeyでソート
+    return settings.sort((a, b) => {
+      if (a.category !== b.category) {
+        return a.category.localeCompare(b.category)
+      }
+      return a.key.localeCompare(b.key)
+    })
   } catch (error) {
     console.error('Error fetching system settings:', error)
     throw error
