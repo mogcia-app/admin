@@ -39,6 +39,22 @@ export async function seedFirestoreData() {
         isActive: true,
         createdAt: new Date('2024-02-01T12:00:00Z').toISOString(),
         updatedAt: new Date('2024-02-01T12:00:00Z').toISOString(),
+      },
+      {
+        name: '高橋健太',
+        email: 'takahashi@example.com',
+        role: 'user',
+        isActive: true,
+        createdAt: new Date('2024-02-05T08:30:00Z').toISOString(),
+        updatedAt: new Date('2024-02-05T08:30:00Z').toISOString(),
+      },
+      {
+        name: '伊藤さくら',
+        email: 'ito@example.com',
+        role: 'user',
+        isActive: true,
+        createdAt: new Date('2024-02-10T15:45:00Z').toISOString(),
+        updatedAt: new Date('2024-02-10T15:45:00Z').toISOString(),
       }
     ]
 
@@ -52,8 +68,8 @@ export async function seedFirestoreData() {
     // ダッシュボード統計データを追加
     const dashboardStatsDoc = doc(db, 'dashboard', 'stats')
     await setDoc(dashboardStatsDoc, {
-      totalUsers: sampleUsers.length,
-      activeUsers: sampleUsers.filter(u => u.isActive).length,
+      totalUsers: 1247,
+      activeUsers: 892,
       totalRevenue: 2340000,
       monthlyGrowth: 23.1,
       lastUpdated: new Date().toISOString()
