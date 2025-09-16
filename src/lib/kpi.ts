@@ -38,19 +38,27 @@ const COLLECTIONS = {
 // KPIメトリクスの取得
 export async function getKPIMetrics(): Promise<KPIMetric[]> {
   try {
+    // 複合インデックスエラーを避けるため、シンプルなクエリに変更
     const q = query(
       collection(db, COLLECTIONS.KPI_METRICS), 
-      where('isActive', '==', true),
-      orderBy('category'),
-      orderBy('name')
+      where('isActive', '==', true)
     )
     const querySnapshot = await getDocs(q)
     
-    return querySnapshot.docs.map(doc => ({
+    // クライアントサイドでソート
+    const metrics = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
       updatedAt: doc.data().updatedAt?.toDate?.()?.toISOString() || doc.data().updatedAt,
     })) as KPIMetric[]
+    
+    // カテゴリと名前でソート
+    return metrics.sort((a, b) => {
+      if (a.category !== b.category) {
+        return a.category.localeCompare(b.category)
+      }
+      return a.name.localeCompare(b.name)
+    })
   } catch (error) {
     console.error('Error fetching KPI metrics:', error)
     throw error
@@ -153,18 +161,27 @@ export async function getEngagementMetrics(startDate?: string, endDate?: string)
 // リテンションメトリクスの取得
 export async function getRetentionMetrics(): Promise<RetentionMetrics[]> {
   try {
+    // 複合インデックスエラーを避けるため、シンプルなクエリに変更
     const q = query(
       collection(db, COLLECTIONS.RETENTION),
-      orderBy('cohort', 'desc'),
-      orderBy('period')
+      orderBy('cohort', 'desc')
     )
     const querySnapshot = await getDocs(q)
     
-    return querySnapshot.docs.map(doc => ({
+    // クライアントサイドでソート
+    const metrics = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
       createdAt: doc.data().createdAt?.toDate?.()?.toISOString() || doc.data().createdAt,
     })) as RetentionMetrics[]
+    
+    // cohortとperiodでソート
+    return metrics.sort((a, b) => {
+      if (a.cohort !== b.cohort) {
+        return b.cohort.localeCompare(a.cohort) // 降順
+      }
+      return a.period - b.period // 昇順
+    })
   } catch (error) {
     console.error('Error fetching retention metrics:', error)
     throw error
