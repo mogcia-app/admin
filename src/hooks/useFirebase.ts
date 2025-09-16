@@ -14,31 +14,31 @@ export function useDashboardData() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    async function fetchDashboardData() {
-      try {
-        setLoading(true)
-        const dashboardStats = await dashboardService.getDashboardStats()
-        setStats(dashboardStats)
-      } catch (err) {
-        console.error('Error fetching dashboard data:', err)
-        setError('ダッシュボードデータの取得に失敗しました。Firebase接続を確認してください。')
-        // エラー時は空のデータを表示
-        setStats({
-          totalUsers: 0,
-          activeUsers: 0,
-          totalRevenue: 0,
-          monthlyGrowth: 0
-        })
-      } finally {
-        setLoading(false)
-      }
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true)
+      const dashboardStats = await dashboardService.getDashboardStats()
+      setStats(dashboardStats)
+    } catch (err) {
+      console.error('Error fetching dashboard data:', err)
+      setError('ダッシュボードデータの取得に失敗しました。Firebase接続を確認してください。')
+      // エラー時は空のデータを表示
+      setStats({
+        totalUsers: 0,
+        activeUsers: 0,
+        totalRevenue: 0,
+        monthlyGrowth: 0
+      })
+    } finally {
+      setLoading(false)
     }
+  }
 
+  useEffect(() => {
     fetchDashboardData()
   }, [])
 
-  return { stats, loading, error }
+  return { stats, loading, error, refresh: fetchDashboardData }
 }
 
 export function useUsers() {

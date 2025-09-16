@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Users, UserCheck, TrendingUp, DollarSign, Loader2, Wifi } from 'lucide-react'
 import { StatsCard } from '@/components/dashboard/stats-card'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -9,8 +9,17 @@ import { useDashboardData } from '@/hooks/useFirebase'
 import { testFirebaseConnection } from '@/lib/firebase-test'
 
 export default function DashboardPage() {
-  const { stats, loading, error } = useDashboardData()
+  const { stats, loading, error, refresh } = useDashboardData()
   const [testing, setTesting] = useState(false)
+
+  // 定期的にダッシュボードデータを更新
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refresh()
+    }, 5000) // 5秒ごとに更新
+
+    return () => clearInterval(interval)
+  }, [refresh])
 
   const handleTestConnection = async () => {
     try {
@@ -43,29 +52,25 @@ export default function DashboardPage() {
       title: '総ユーザー数',
       value: stats.totalUsers.toLocaleString(),
       description: '登録済みユーザー',
-      icon: Users,
-      trend: { value: 12, isPositive: true }
+      icon: Users
     },
     {
       title: 'アクティブユーザー',
       value: stats.activeUsers.toLocaleString(),
       description: '過去30日間',
-      icon: UserCheck,
-      trend: { value: 8, isPositive: true }
+      icon: UserCheck
     },
     {
       title: '月間成長率',
       value: `${stats.monthlyGrowth}%`,
       description: 'ユーザー増加率',
-      icon: TrendingUp,
-      trend: { value: 4, isPositive: true }
+      icon: TrendingUp
     },
     {
       title: '月間売上',
       value: `¥${stats.totalRevenue.toLocaleString()}`,
       description: '今月の売上',
-      icon: DollarSign,
-      trend: { value: 15, isPositive: true }
+      icon: DollarSign
     }
   ]
 
