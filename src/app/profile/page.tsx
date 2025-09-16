@@ -113,16 +113,21 @@ export default function ProfilePage() {
   }
 
   const handlePreferenceChange = (category: string, field: string, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      preferences: {
-        ...prev.preferences,
-        [category]: {
-          ...prev.preferences[category as keyof typeof prev.preferences],
-          [field]: value
+    setFormData(prev => {
+      const currentCategory = prev.preferences[category as keyof typeof prev.preferences]
+      const isObject = currentCategory && typeof currentCategory === 'object'
+      
+      return {
+        ...prev,
+        preferences: {
+          ...prev.preferences,
+          [category]: {
+            ...(isObject ? currentCategory : {}),
+            [field]: value
+          }
         }
       }
-    }))
+    })
   }
 
   const getRoleBadgeColor = (role: string) => {
