@@ -1,25 +1,18 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
-import { Users, UserCheck, TrendingUp, DollarSign, Loader2, Wifi } from 'lucide-react'
+import React, { useState } from 'react'
+import { Users, UserCheck, TrendingUp, DollarSign, Loader2, Wifi, Trash2 } from 'lucide-react'
 import { StatsCard } from '@/components/dashboard/stats-card'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useDashboardData } from '@/hooks/useFirebase'
 import { testFirebaseConnection } from '@/lib/firebase-test'
+import { clearAllFirebaseData } from '@/lib/clear-firebase-data'
 
 export default function DashboardPage() {
-  const { stats, loading, error, refresh } = useDashboardData()
+  const { stats, loading, error } = useDashboardData()
   const [testing, setTesting] = useState(false)
-
-  // 定期的にダッシュボードデータを更新
-  useEffect(() => {
-    const interval = setInterval(() => {
-      refresh()
-    }, 5000) // 5秒ごとに更新
-
-    return () => clearInterval(interval)
-  }, [refresh])
+  const [clearing, setClearing] = useState(false)
 
   const handleTestConnection = async () => {
     try {
@@ -35,6 +28,24 @@ export default function DashboardPage() {
       alert('接続テスト中にエラーが発生しました。')
     } finally {
       setTesting(false)
+    }
+  }
+
+  const handleClearData = async () => {
+    if (!confirm('本当に全てのデータを削除しますか？この操作は元に戻せません。')) {
+      return
+    }
+    
+    try {
+      setClearing(true)
+      await clearAllFirebaseData()
+      alert('全てのデータを削除しました。ページをリロードしてください。')
+      window.location.reload()
+    } catch (err) {
+      console.error('Error clearing data:', err)
+      alert('データの削除中にエラーが発生しました。')
+    } finally {
+      setClearing(false)
     }
   }
 
@@ -82,7 +93,7 @@ export default function DashboardPage() {
             <p className="text-muted-foreground">
               システムの概要と主要な指標を確認できます
               {error && <span className="text-destructive ml-2">(エラー: {error})</span>}
-              {!error && !loading && <span className="text-green-600 ml-2">(実際のデータを表示中)</span>}
+              {!error && !loading && stats.totalUsers === 0 && <span className="text-gray-500 ml-2">(データがありません)</span>}
             </p>
           </div>
           <div className="flex gap-2">
@@ -100,6 +111,23 @@ export default function DashboardPage() {
                 <>
                   <Wifi className="h-4 w-4 mr-2" />
                   Firebase接続テスト
+                </>
+              )}
+            </Button>
+            <Button 
+              onClick={handleClearData} 
+              disabled={clearing}
+              variant="destructive"
+            >
+              {clearing ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  削除中...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  全データ削除
                 </>
               )}
             </Button>

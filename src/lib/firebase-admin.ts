@@ -123,6 +123,13 @@ export const dashboardService = {
         ? ((currentMonthUsers - lastMonthUsers) / lastMonthUsers) * 100
         : 0
       
+      console.log('Dashboard stats calculated:', {
+        totalUsers,
+        activeUsers: activeUsersCount,
+        totalRevenue,
+        monthlyGrowth: Math.round(monthlyGrowth * 10) / 10
+      })
+      
       return {
         totalUsers,
         activeUsers: activeUsersCount,
@@ -131,7 +138,13 @@ export const dashboardService = {
       }
     } catch (error) {
       console.error('Error getting dashboard stats:', error)
-      throw error
+      // エラー時は0を返す
+      return {
+        totalUsers: 0,
+        activeUsers: 0,
+        totalRevenue: 0,
+        monthlyGrowth: 0
+      }
     }
   },
 
