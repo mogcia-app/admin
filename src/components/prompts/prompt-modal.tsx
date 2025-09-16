@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { X, Plus, Trash2, Save, TestTube } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -141,8 +142,8 @@ export function PromptModal({ isOpen, onClose, prompt, onSave }: PromptModalProp
     onClose()
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-50 p-4">
       <div className="bg-background rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto relative">
         <div className="flex items-center justify-between p-6 border-b">
           <h2 className="text-2xl font-bold">
@@ -415,6 +416,7 @@ export function PromptModal({ isOpen, onClose, prompt, onSave }: PromptModalProp
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
