@@ -39,6 +39,9 @@ export function Dialog({ open, onOpenChange, children }: DialogProps) {
             onClick={() => handleOpenChange(false)}
           />
           {/* Content will be rendered by DialogContent */}
+          <div className="relative z-50">
+            {children}
+          </div>
         </div>
       )}
     </DialogContext.Provider>

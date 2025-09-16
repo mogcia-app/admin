@@ -178,7 +178,7 @@ export default function NotificationsPage() {
           </Button>
           <Button onClick={() => setShowCreateModal(true)}>
             <Plus className="h-4 w-4 mr-2" />
-            新規作成
+            新規お知らせ作成
           </Button>
         </div>
       </div>
@@ -288,7 +288,7 @@ export default function NotificationsPage() {
         onClose={() => setShowCreateModal(false)}
         onSave={handleCreateNotification}
       />
-
+      
       <NotificationModal
         isOpen={showEditModal}
         onClose={() => {
