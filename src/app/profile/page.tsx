@@ -243,7 +243,7 @@ export default function ProfilePage() {
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm">2段階認証</span>
-                <Badge variant={isEditing ? formData.security.twoFactorEnabled : profile.security.twoFactorEnabled ? "default" : "secondary"}>
+                <Badge variant={(isEditing ? formData.security.twoFactorEnabled : profile.security.twoFactorEnabled) ? "default" : "secondary"}>
                   {isEditing ? formData.security.twoFactorEnabled : profile.security.twoFactorEnabled ? "有効" : "無効"}
                 </Badge>
               </div>
