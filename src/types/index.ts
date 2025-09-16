@@ -79,6 +79,7 @@ export interface UserProfile {
   usageType: 'team' | 'solo'
   contractType: 'annual' | 'trial'
   contractSNS: ('instagram' | 'x' | 'youtube' | 'tiktok')[]
+  snsCount: number // 契約SNS数 (1-4)
   snsAISettings: SNSAISettings
   businessInfo: BusinessInfo
   status: 'active' | 'inactive' | 'suspended'
