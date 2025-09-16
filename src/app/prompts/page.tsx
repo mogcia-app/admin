@@ -1,72 +1,14 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Plus, Search, Filter, Edit, Trash2, Play, Copy, Eye, Loader2, Database } from 'lucide-react'
+import { Plus, Search, Edit, Trash2, Play, Copy, Eye, Loader2, Database } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { AdminLayout } from '@/components/layout/admin-layout'
 import { PromptModal } from '@/components/prompts/prompt-modal'
 import { PromptTemplate } from '@/types'
 import { usePrompts, usePromptStats } from '@/hooks/usePrompts'
 import { seedPromptData } from '@/lib/prompts'
 
-// モックデータ（後でFirestoreから取得）
-const mockPrompts: PromptTemplate[] = [
-  {
-    id: 'prompt-001',
-    name: 'ユーザーサポート応答',
-    description: 'ユーザーからの問い合わせに対する丁寧な応答を生成',
-    category: 'system',
-    prompt: 'あなたは親切なカスタマーサポート担当です。以下の問い合わせに対して、丁寧で分かりやすい回答をしてください。\n\n問い合わせ内容: {{inquiry}}\nユーザー名: {{userName}}',
-    variables: [
-      { name: 'inquiry', type: 'text', description: '問い合わせ内容', required: true },
-      { name: 'userName', type: 'text', description: 'ユーザー名', required: false, defaultValue: 'お客様' }
-    ],
-    isActive: true,
-    createdAt: '2024-01-15T10:00:00Z',
-    updatedAt: '2024-01-20T15:30:00Z',
-    createdBy: 'admin_001',
-    usageCount: 245,
-    tags: ['サポート', '顧客対応', '問い合わせ']
-  },
-  {
-    id: 'prompt-002',
-    name: 'コンテンツ要約',
-    description: '長いテキストを簡潔に要約',
-    category: 'assistant',
-    prompt: '以下のテキストを{{length}}文字程度で要約してください。重要なポイントを漏らさず、分かりやすくまとめてください。\n\nテキスト:\n{{content}}',
-    variables: [
-      { name: 'content', type: 'text', description: '要約するテキスト', required: true },
-      { name: 'length', type: 'select', description: '要約の長さ', required: true, defaultValue: '200', options: ['100', '200', '300', '500'] }
-    ],
-    isActive: true,
-    createdAt: '2024-01-10T14:20:00Z',
-    updatedAt: '2024-01-18T09:15:00Z',
-    createdBy: 'admin_002',
-    usageCount: 156,
-    tags: ['要約', 'コンテンツ', 'テキスト処理']
-  },
-  {
-    id: 'prompt-003',
-    name: 'マーケティングコピー生成',
-    description: '商品やサービスの魅力的なキャッチコピーを生成',
-    category: 'custom',
-    prompt: '以下の商品・サービスについて、{{tone}}な雰囲気で魅力的なキャッチコピーを{{count}}個生成してください。\n\n商品・サービス名: {{productName}}\n特徴: {{features}}\nターゲット: {{target}}',
-    variables: [
-      { name: 'productName', type: 'text', description: '商品・サービス名', required: true },
-      { name: 'features', type: 'text', description: '主な特徴', required: true },
-      { name: 'target', type: 'text', description: 'ターゲット層', required: true },
-      { name: 'tone', type: 'select', description: '雰囲気', required: true, defaultValue: '親しみやすい', options: ['親しみやすい', 'プロフェッショナル', 'エネルギッシュ', 'エレガント'] },
-      { name: 'count', type: 'select', description: '生成数', required: true, defaultValue: '3', options: ['3', '5', '10'] }
-    ],
-    isActive: false,
-    createdAt: '2024-01-05T16:45:00Z',
-    updatedAt: '2024-01-12T11:30:00Z',
-    createdBy: 'admin_003',
-    usageCount: 89,
-    tags: ['マーケティング', 'コピー', '広告']
-  }
-]
 
 export default function PromptsPage() {
   const { prompts, loading, error, addPrompt, editPrompt, removePrompt } = usePrompts()
@@ -185,238 +127,234 @@ export default function PromptsPage() {
 
   if (loading) {
     return (
-      <AdminLayout>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <Loader2 className="h-8 w-8 animate-spin" />
-          <span className="ml-2">プロンプトデータを読み込み中...</span>
-        </div>
-      </AdminLayout>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <span className="ml-2">プロンプトデータを読み込み中...</span>
+      </div>
     )
   }
 
   return (
-    <AdminLayout>
-      <div className="space-y-6">
-        {/* ヘッダー */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">プロンプト管理</h1>
-            <p className="text-muted-foreground">
-              AIプロンプトの作成、編集、管理を行います
-              {error && <span className="text-destructive ml-2">({error})</span>}
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Button
-              onClick={handleSeedData}
-              disabled={seeding}
-              variant="outline"
-            >
-              {seeding ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  作成中...
-                </>
-              ) : (
-                <>
-                  <Database className="h-4 w-4 mr-2" />
-                  サンプルデータ作成
-                </>
-              )}
-            </Button>
-            <Button onClick={() => setShowCreateModal(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              新規作成
-            </Button>
-          </div>
+    <div className="space-y-6">
+      {/* ヘッダー */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">プロンプト管理</h1>
+          <p className="text-muted-foreground">
+            AIプロンプトの作成、編集、管理を行います
+            {error && <span className="text-destructive ml-2">({error})</span>}
+          </p>
         </div>
-
-        {/* 検索・フィルター */}
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
-              type="search"
-              placeholder="プロンプトを検索..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-2 w-full bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-          </div>
-          <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="px-3 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+        <div className="flex gap-2">
+          <Button
+            onClick={handleSeedData}
+            disabled={seeding}
+            variant="outline"
           >
-            <option value="all">すべてのカテゴリ</option>
-            <option value="system">システム</option>
-            <option value="user">ユーザー</option>
-            <option value="assistant">アシスタント</option>
-            <option value="custom">カスタム</option>
-          </select>
+            {seeding ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                作成中...
+              </>
+            ) : (
+              <>
+                <Database className="h-4 w-4 mr-2" />
+                サンプルデータ作成
+              </>
+            )}
+          </Button>
+          <Button onClick={() => setShowCreateModal(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            新規作成
+          </Button>
         </div>
+      </div>
 
-        {/* 統計情報 */}
-        <div className="grid gap-4 md:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">総プロンプト数</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalPrompts}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">アクティブ</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.activePrompts}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">総使用回数</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalUsage.toLocaleString()}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">平均使用回数</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.averageUsage}</div>
-            </CardContent>
-          </Card>
+      {/* 検索・フィルター */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <input
+            type="search"
+            placeholder="プロンプトを検索..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 pr-4 py-2 w-full bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          />
         </div>
+        <select
+          value={selectedCategory}
+          onChange={(e) => setSelectedCategory(e.target.value)}
+          className="px-3 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+        >
+          <option value="all">すべてのカテゴリ</option>
+          <option value="system">システム</option>
+          <option value="user">ユーザー</option>
+          <option value="assistant">アシスタント</option>
+          <option value="custom">カスタム</option>
+        </select>
+      </div>
 
-        {/* プロンプト一覧 */}
-        <div className="grid gap-4">
-          {filteredPrompts.map((prompt) => (
-            <Card key={prompt.id} className="hover:shadow-md transition-shadow">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <CardTitle className="text-lg">{prompt.name}</CardTitle>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getCategoryColor(prompt.category)}`}>
-                        {getCategoryLabel(prompt.category)}
+      {/* 統計情報 */}
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">総プロンプト数</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalPrompts}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">アクティブ</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.activePrompts}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">総使用回数</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalUsage.toLocaleString()}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">平均使用回数</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.averageUsage}</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* プロンプト一覧 */}
+      <div className="grid gap-4">
+        {filteredPrompts.map((prompt) => (
+          <Card key={prompt.id} className="hover:shadow-md transition-shadow">
+            <CardHeader>
+              <div className="flex items-start justify-between">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="text-lg">{prompt.name}</CardTitle>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getCategoryColor(prompt.category)}`}>
+                      {getCategoryLabel(prompt.category)}
+                    </span>
+                    {!prompt.isActive && (
+                      <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                        無効
                       </span>
-                      {!prompt.isActive && (
-                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-                          無効
-                        </span>
-                      )}
-                    </div>
-                    <CardDescription>{prompt.description}</CardDescription>
-                    <div className="flex flex-wrap gap-1">
-                      {prompt.tags.map((tag) => (
+                    )}
+                  </div>
+                  <CardDescription>{prompt.description}</CardDescription>
+                  <div className="flex flex-wrap gap-1">
+                    {prompt.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="px-2 py-1 bg-muted text-muted-foreground text-xs rounded"
+                      >
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button variant="ghost" size="sm">
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => handleCopyPrompt(prompt)}
+                    title="プロンプトをコピー"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    title="プロンプトを実行"
+                  >
+                    <Play className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => openEditModal(prompt)}
+                    title="編集"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => handleDeletePrompt(prompt.id)}
+                    title="削除"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="text-sm text-muted-foreground">
+                  使用回数: {prompt.usageCount.toLocaleString()}回 | 
+                  作成日: {new Date(prompt.createdAt).toLocaleDateString('ja-JP')} | 
+                  更新日: {new Date(prompt.updatedAt).toLocaleDateString('ja-JP')}
+                </div>
+                <div className="bg-muted p-3 rounded-md">
+                  <p className="text-sm font-mono whitespace-pre-wrap line-clamp-3">
+                    {prompt.prompt}
+                  </p>
+                </div>
+                {prompt.variables.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">変数:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {prompt.variables.map((variable) => (
                         <span
-                          key={tag}
-                          className="px-2 py-1 bg-muted text-muted-foreground text-xs rounded"
+                          key={variable.name}
+                          className="px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded border"
                         >
-                          #{tag}
+                          {variable.name} ({variable.type})
+                          {variable.required && <span className="text-red-500">*</span>}
                         </span>
                       ))}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="sm">
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => handleCopyPrompt(prompt)}
-                      title="プロンプトをコピー"
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      title="プロンプトを実行"
-                    >
-                      <Play className="h-4 w-4" />
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => openEditModal(prompt)}
-                      title="編集"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => handleDeletePrompt(prompt.id)}
-                      title="削除"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="text-sm text-muted-foreground">
-                    使用回数: {prompt.usageCount.toLocaleString()}回 | 
-                    作成日: {new Date(prompt.createdAt).toLocaleDateString('ja-JP')} | 
-                    更新日: {new Date(prompt.updatedAt).toLocaleDateString('ja-JP')}
-                  </div>
-                  <div className="bg-muted p-3 rounded-md">
-                    <p className="text-sm font-mono whitespace-pre-wrap line-clamp-3">
-                      {prompt.prompt}
-                    </p>
-                  </div>
-                  {prompt.variables.length > 0 && (
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium">変数:</p>
-                      <div className="flex flex-wrap gap-2">
-                        {prompt.variables.map((variable) => (
-                          <span
-                            key={variable.name}
-                            className="px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded border"
-                          >
-                            {variable.name} ({variable.type})
-                            {variable.required && <span className="text-red-500">*</span>}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {filteredPrompts.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">該当するプロンプトが見つかりませんでした。</p>
-          </div>
-        )}
-
-        {/* モーダル */}
-        <PromptModal
-          isOpen={showCreateModal}
-          onClose={() => setShowCreateModal(false)}
-          onSave={handleCreatePrompt}
-        />
-        
-        <PromptModal
-          isOpen={showEditModal}
-          onClose={() => {
-            setShowEditModal(false)
-            setSelectedPrompt(null)
-          }}
-          prompt={selectedPrompt}
-          onSave={handleEditPrompt}
-        />
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
-    </AdminLayout>
+
+      {filteredPrompts.length === 0 && (
+        <div className="text-center py-12">
+          <p className="text-muted-foreground">該当するプロンプトが見つかりませんでした。</p>
+        </div>
+      )}
+
+      {/* モーダル */}
+      <PromptModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onSave={handleCreatePrompt}
+      />
+      
+      <PromptModal
+        isOpen={showEditModal}
+        onClose={() => {
+          setShowEditModal(false)
+          setSelectedPrompt(null)
+        }}
+        prompt={selectedPrompt}
+        onSave={handleEditPrompt}
+      />
+    </div>
   )
 }
