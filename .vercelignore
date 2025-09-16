@@ -1,0 +1,25 @@
+# Firebase Functions (別途デプロイ)
+functions/
+
+# Firebase設定ファイル
+firebase.json
+firestore.rules
+firestore.indexes.json
+
+# 開発ファイル
+*.md
+.github/
+.git/
+
+# ログファイル
+*.log
+firebase-debug.log
+firebase-debug.*.log
+
+# 環境ファイル
+.env*.local
+.env
+
+# IDE
+.vscode/
+.idea/
