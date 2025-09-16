@@ -12,7 +12,8 @@ import {
   X,
   MessageSquare,
   TrendingUp,
-  Bell
+  Bell,
+  Shield
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -54,6 +55,12 @@ const sidebarItems: SidebarItem[] = [
     label: 'お知らせ管理',
     icon: Bell,
     href: '/notifications',
+  },
+  {
+    id: 'access-control',
+    label: 'アクセス制御',
+    icon: Shield,
+    href: '/access-control',
   },
   {
     id: 'settings',
