@@ -4,7 +4,6 @@ import React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  LayoutDashboard,
   Users,
   Settings,
   BarChart3,
@@ -22,12 +21,6 @@ import { Button } from '@/components/ui/button'
 import { SidebarItem } from '@/types'
 
 const sidebarItems: SidebarItem[] = [
-  {
-    id: 'dashboard',
-    label: 'ダッシュボード',
-    icon: LayoutDashboard,
-    href: '/dashboard',
-  },
   {
     id: 'users',
     label: 'ユーザー管理',
