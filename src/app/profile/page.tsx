@@ -324,9 +324,8 @@ export default function ProfilePage() {
                   <Select
                     value={isEditing ? formData.role : profile.role}
                     onValueChange={(value) => isEditing && handleChange('role', value)}
-                    disabled={!isEditing}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger disabled={!isEditing}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -365,9 +364,8 @@ export default function ProfilePage() {
                   <Select
                     value={isEditing ? formData.preferences.language : profile.preferences.language}
                     onValueChange={(value) => isEditing && handlePreferenceChange('language', 'language', value)}
-                    disabled={!isEditing}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger disabled={!isEditing}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -381,9 +379,8 @@ export default function ProfilePage() {
                   <Select
                     value={isEditing ? formData.preferences.timezone : profile.preferences.timezone}
                     onValueChange={(value) => isEditing && handlePreferenceChange('timezone', 'timezone', value)}
-                    disabled={!isEditing}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger disabled={!isEditing}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -398,9 +395,8 @@ export default function ProfilePage() {
                   <Select
                     value={isEditing ? formData.preferences.theme : profile.preferences.theme}
                     onValueChange={(value) => isEditing && handlePreferenceChange('theme', 'theme', value)}
-                    disabled={!isEditing}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger disabled={!isEditing}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
