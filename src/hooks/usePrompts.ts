@@ -19,39 +19,40 @@ export function usePrompts() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    let unsubscribe: (() => void) | undefined
+    let intervalId: NodeJS.Timeout | undefined
 
     const initializePrompts = async () => {
       try {
         setLoading(true)
+        setError(null)
         
-        // リアルタイム監視を開始
-        unsubscribe = subscribeToPrompts((updatedPrompts) => {
-          setPrompts(updatedPrompts)
-          setLoading(false)
-          setError(null)
-        })
+        // 初回読み込み
+        const fetchedPrompts = await getPrompts()
+        setPrompts(fetchedPrompts)
+        setLoading(false)
+        
+        // 定期的な更新（30秒間隔）
+        intervalId = setInterval(async () => {
+          try {
+            const updatedPrompts = await getPrompts()
+            setPrompts(updatedPrompts)
+          } catch (err) {
+            console.error('Error refreshing prompts:', err)
+          }
+        }, 30000)
         
       } catch (err) {
         console.error('Error initializing prompts:', err)
         setError(err instanceof Error ? err.message : 'プロンプトの読み込みに失敗しました')
         setLoading(false)
-        
-        // フォールバック: 一度だけ取得を試行
-        try {
-          const fetchedPrompts = await getPrompts()
-          setPrompts(fetchedPrompts)
-        } catch (fallbackErr) {
-          console.error('Fallback fetch failed:', fallbackErr)
-        }
       }
     }
 
     initializePrompts()
 
     return () => {
-      if (unsubscribe) {
-        unsubscribe()
+      if (intervalId) {
+        clearInterval(intervalId)
       }
     }
   }, [])
@@ -106,9 +107,16 @@ export function usePrompts() {
     editPrompt,
     removePrompt,
     usePrompt,
-    refreshPrompts: () => {
+    refreshPrompts: async () => {
       setLoading(true)
-      getPrompts().then(setPrompts).finally(() => setLoading(false))
+      try {
+        const fetchedPrompts = await getPrompts()
+        setPrompts(fetchedPrompts)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'プロンプトの読み込みに失敗しました')
+      } finally {
+        setLoading(false)
+      }
     }
   }
 }

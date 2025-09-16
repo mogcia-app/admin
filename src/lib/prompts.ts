@@ -1,3 +1,7 @@
+import { PromptTemplate } from '@/types'
+import { API_ENDPOINTS, apiGet, apiPost, apiPut, apiDelete } from './api-config'
+
+// 後方互換性のために残しておく（Firestore直接アクセス用）
 import { 
   collection, 
   doc, 
@@ -13,12 +17,28 @@ import {
   Timestamp 
 } from 'firebase/firestore'
 import { db } from './firebase'
-import { PromptTemplate } from '@/types'
 
-const COLLECTION_NAME = 'prompts'
+const COLLECTION_NAME = 'promptTemplates' // Cloud Functionsと同じコレクション名
 
-// プロンプト一覧を取得
-export async function getPrompts(): Promise<PromptTemplate[]> {
+// プロンプト一覧を取得 (Cloud Functions API使用)
+export async function getPrompts(category?: string, search?: string, isActive?: boolean): Promise<PromptTemplate[]> {
+  try {
+    const params: Record<string, string> = {}
+    if (category) params.category = category
+    if (search) params.search = search
+    if (isActive !== undefined) params.isActive = isActive.toString()
+
+    const response = await apiGet(API_ENDPOINTS.prompts.list, params)
+    return response.prompts || []
+  } catch (error) {
+    console.error('Error fetching prompts from API:', error)
+    // フォールバック: Firestore直接アクセス
+    return getPromptsFromFirestore()
+  }
+}
+
+// Firestoreから直接取得（フォールバック用）
+async function getPromptsFromFirestore(): Promise<PromptTemplate[]> {
   try {
     const q = query(
       collection(db, COLLECTION_NAME), 
@@ -33,7 +53,7 @@ export async function getPrompts(): Promise<PromptTemplate[]> {
       updatedAt: doc.data().updatedAt?.toDate?.()?.toISOString() || doc.data().updatedAt,
     })) as PromptTemplate[]
   } catch (error) {
-    console.error('Error fetching prompts:', error)
+    console.error('Error fetching prompts from Firestore:', error)
     throw error
   }
 }
@@ -61,8 +81,25 @@ export async function getPrompt(id: string): Promise<PromptTemplate | null> {
   }
 }
 
-// プロンプトを作成
+// プロンプトを作成 (Cloud Functions API使用)
 export async function createPrompt(promptData: Omit<PromptTemplate, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+  try {
+    const response = await apiPost(API_ENDPOINTS.prompts.create, {
+      ...promptData,
+      createdBy: promptData.createdBy || 'admin_user', // デフォルト値
+    })
+    
+    console.log('Prompt created with ID:', response.id)
+    return response.id
+  } catch (error) {
+    console.error('Error creating prompt via API:', error)
+    // フォールバック: Firestore直接アクセス
+    return createPromptInFirestore(promptData)
+  }
+}
+
+// Firestoreに直接作成（フォールバック用）
+async function createPromptInFirestore(promptData: Omit<PromptTemplate, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
   try {
     const now = Timestamp.now()
     const docRef = await addDoc(collection(db, COLLECTION_NAME), {
@@ -72,16 +109,31 @@ export async function createPrompt(promptData: Omit<PromptTemplate, 'id' | 'crea
       usageCount: 0
     })
     
-    console.log('Prompt created with ID:', docRef.id)
+    console.log('Prompt created with ID (Firestore):', docRef.id)
     return docRef.id
   } catch (error) {
-    console.error('Error creating prompt:', error)
+    console.error('Error creating prompt in Firestore:', error)
     throw error
   }
 }
 
-// プロンプトを更新
+// プロンプトを更新 (Cloud Functions API使用)
 export async function updatePrompt(id: string, updates: Partial<PromptTemplate>): Promise<void> {
+  try {
+    const { id: _, createdAt, ...updateData } = updates
+    const url = `${API_ENDPOINTS.prompts.update}?id=${id}`
+    
+    await apiPut(url, updateData)
+    console.log('Prompt updated via API:', id)
+  } catch (error) {
+    console.error('Error updating prompt via API:', error)
+    // フォールバック: Firestore直接アクセス
+    return updatePromptInFirestore(id, updates)
+  }
+}
+
+// Firestoreで直接更新（フォールバック用）
+async function updatePromptInFirestore(id: string, updates: Partial<PromptTemplate>): Promise<void> {
   try {
     const docRef = doc(db, COLLECTION_NAME, id)
     const { id: _, createdAt, ...updateData } = updates
@@ -91,22 +143,35 @@ export async function updatePrompt(id: string, updates: Partial<PromptTemplate>)
       updatedAt: Timestamp.now()
     })
     
-    console.log('Prompt updated:', id)
+    console.log('Prompt updated (Firestore):', id)
   } catch (error) {
-    console.error('Error updating prompt:', error)
+    console.error('Error updating prompt in Firestore:', error)
     throw error
   }
 }
 
-// プロンプトを削除
+// プロンプトを削除 (Cloud Functions API使用)
 export async function deletePrompt(id: string): Promise<void> {
+  try {
+    const url = `${API_ENDPOINTS.prompts.delete}?id=${id}`
+    await apiDelete(url)
+    console.log('Prompt deleted via API:', id)
+  } catch (error) {
+    console.error('Error deleting prompt via API:', error)
+    // フォールバック: Firestore直接アクセス
+    return deletePromptFromFirestore(id)
+  }
+}
+
+// Firestoreから直接削除（フォールバック用）
+async function deletePromptFromFirestore(id: string): Promise<void> {
   try {
     const docRef = doc(db, COLLECTION_NAME, id)
     await deleteDoc(docRef)
     
-    console.log('Prompt deleted:', id)
+    console.log('Prompt deleted (Firestore):', id)
   } catch (error) {
-    console.error('Error deleting prompt:', error)
+    console.error('Error deleting prompt from Firestore:', error)
     throw error
   }
 }
@@ -155,8 +220,21 @@ export async function getActivePrompts(): Promise<PromptTemplate[]> {
   }
 }
 
-// プロンプト使用回数を増加
+// プロンプト使用回数を増加 (Cloud Functions API使用)
 export async function incrementPromptUsage(id: string): Promise<void> {
+  try {
+    const url = `${API_ENDPOINTS.prompts.incrementUsage}?id=${id}`
+    await apiPost(url, {})
+    console.log('Prompt usage incremented via API:', id)
+  } catch (error) {
+    console.error('Error incrementing prompt usage via API:', error)
+    // フォールバック: Firestore直接アクセス
+    return incrementPromptUsageInFirestore(id)
+  }
+}
+
+// Firestoreで直接使用回数増加（フォールバック用）
+async function incrementPromptUsageInFirestore(id: string): Promise<void> {
   try {
     const docRef = doc(db, COLLECTION_NAME, id)
     const docSnap = await getDoc(docRef)
@@ -169,7 +247,7 @@ export async function incrementPromptUsage(id: string): Promise<void> {
       })
     }
   } catch (error) {
-    console.error('Error incrementing prompt usage:', error)
+    console.error('Error incrementing prompt usage in Firestore:', error)
     throw error
   }
 }
