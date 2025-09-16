@@ -13,7 +13,8 @@ import {
   MessageSquare,
   TrendingUp,
   Bell,
-  Shield
+  Shield,
+  Bot
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -61,6 +62,12 @@ const sidebarItems: SidebarItem[] = [
     label: 'アクセス制御',
     icon: Shield,
     href: '/access-control',
+  },
+  {
+    id: 'ai-assistant',
+    label: 'AIアシスタント',
+    icon: Bot,
+    href: '/ai-assistant',
   },
   {
     id: 'settings',
