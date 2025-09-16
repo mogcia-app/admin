@@ -5,11 +5,8 @@ const nextConfig: NextConfig = {
   output: 'standalone',
   
   // Firebase Functions フォルダを除外
-  pageExtensions: ['js', 'jsx', 'ts', 'tsx', 'mdx'],
-  experimental: {
-    outputFileTracingExcludes: {
-      '*': ['./functions/**/*'],
-    },
+  outputFileTracingExcludes: {
+    '*': ['./functions/**/*'],
   },
   
   // 画像最適化
