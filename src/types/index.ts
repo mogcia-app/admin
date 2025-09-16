@@ -26,3 +26,46 @@ export interface DashboardStats {
   totalRevenue: number
   monthlyGrowth: number
 }
+
+// プロンプト管理システム用の型定義
+export interface PromptTemplate {
+  id: string
+  name: string
+  description: string
+  category: 'system' | 'user' | 'assistant' | 'custom'
+  prompt: string
+  variables: PromptVariable[]
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+  createdBy: string
+  usageCount: number
+  tags: string[]
+}
+
+export interface PromptVariable {
+  name: string
+  type: 'text' | 'number' | 'boolean' | 'select'
+  description: string
+  required: boolean
+  defaultValue?: string
+  options?: string[] // for select type
+}
+
+export interface PromptCategory {
+  id: string
+  name: string
+  description: string
+  color: string
+  icon: string
+}
+
+export interface PromptUsageLog {
+  id: string
+  promptId: string
+  userId: string
+  executedAt: string
+  variables: Record<string, any>
+  result?: string
+  success: boolean
+}

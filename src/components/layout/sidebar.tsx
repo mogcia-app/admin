@@ -9,7 +9,8 @@ import {
   Settings, 
   BarChart3, 
   User,
-  X
+  X,
+  MessageSquare
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -27,6 +28,12 @@ const sidebarItems: SidebarItem[] = [
     label: 'ユーザー管理',
     icon: Users,
     href: '/users',
+  },
+  {
+    id: 'prompts',
+    label: 'プロンプト管理',
+    icon: MessageSquare,
+    href: '/prompts',
   },
   {
     id: 'analytics',
