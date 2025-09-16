@@ -29,20 +29,24 @@ const COLLECTIONS = {
 // AIチャット一覧の取得
 export async function getAIChats(adminId: string): Promise<AdminAIChat[]> {
   try {
+    // 複合インデックスエラーを避けるため、シンプルなクエリに変更
     const q = query(
       collection(db, COLLECTIONS.AI_CHATS),
       where('adminId', '==', adminId),
-      orderBy('updatedAt', 'desc'),
       limit(50)
     )
     const querySnapshot = await getDocs(q)
     
-    return querySnapshot.docs.map(doc => ({
+    // クライアントサイドでソート
+    const chats = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
       createdAt: doc.data().createdAt?.toDate?.()?.toISOString() || doc.data().createdAt,
       updatedAt: doc.data().updatedAt?.toDate?.()?.toISOString() || doc.data().updatedAt,
     })) as AdminAIChat[]
+
+    // updatedAtでソート（降順）
+    return chats.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
   } catch (error) {
     console.error('Error fetching AI chats:', error)
     throw error
@@ -153,18 +157,26 @@ export async function deleteAIChat(chatId: string): Promise<void> {
 // AI機能一覧の取得
 export async function getAICapabilities(): Promise<AICapability[]> {
   try {
+    // 複合インデックスエラーを避けるため、シンプルなクエリに変更
     const q = query(
       collection(db, COLLECTIONS.AI_CAPABILITIES),
-      where('isEnabled', '==', true),
-      orderBy('category'),
-      orderBy('name')
+      where('isEnabled', '==', true)
     )
     const querySnapshot = await getDocs(q)
     
-    return querySnapshot.docs.map(doc => ({
+    // クライアントサイドでソート
+    const capabilities = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     })) as AICapability[]
+
+    // categoryとnameでソート
+    return capabilities.sort((a, b) => {
+      if (a.category !== b.category) {
+        return a.category.localeCompare(b.category)
+      }
+      return a.name.localeCompare(b.name)
+    })
   } catch (error) {
     console.error('Error fetching AI capabilities:', error)
     throw error
