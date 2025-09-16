@@ -1,14 +1,23 @@
 'use client'
 
 import React from 'react'
-import { Menu, Bell, Search } from 'lucide-react'
+import { Menu, Bell, Search, LogOut, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useAuth } from '@/contexts/auth-context'
 
 interface HeaderProps {
   onMenuClick: () => void
 }
 
 export function Header({ onMenuClick }: HeaderProps) {
+  const { adminUser, logout } = useAuth()
+
+  const handleLogout = async () => {
+    if (confirm('ログアウトしますか？')) {
+      await logout()
+    }
+  }
+
   return (
     <header className="h-16 bg-background border-b border-border flex items-center justify-between px-6 relative z-10">
       <div className="flex items-center gap-4">
@@ -41,12 +50,30 @@ export function Header({ onMenuClick }: HeaderProps) {
         
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-            <span className="text-sm font-medium text-primary-foreground">A</span>
+            <User className="h-4 w-4 text-primary-foreground" />
           </div>
           <div className="hidden sm:block">
-            <p className="text-sm font-medium">管理者</p>
-            <p className="text-xs text-muted-foreground">admin@example.com</p>
+            <p className="text-sm font-medium">
+              {adminUser?.name || '管理者'}
+              {adminUser?.role === 'super_admin' && (
+                <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
+                  Super Admin
+                </span>
+              )}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {adminUser?.email || 'admin@example.com'}
+            </p>
           </div>
+          
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleLogout}
+            title="ログアウト"
+          >
+            <LogOut className="h-4 w-4" />
+          </Button>
         </div>
       </div>
     </header>
