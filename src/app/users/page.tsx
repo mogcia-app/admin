@@ -98,7 +98,7 @@ export default function UsersPage() {
     return labels[type as keyof typeof labels] || type
   }
 
-  const handleCreateUser = async (userData: Partial<UserProfile>) => {
+  const handleCreateUser = async (userData: Partial<User>) => {
     try {
       await addUser({
         name: userData.name || '',
@@ -128,7 +128,7 @@ export default function UsersPage() {
     }
   }
 
-  const handleEditUser = async (userData: Partial<UserProfile>) => {
+  const handleEditUser = async (userData: Partial<User>) => {
     if (!selectedUser) return
     
     try {
@@ -151,12 +151,12 @@ export default function UsersPage() {
     }
   }
 
-  const openDetailModal = (user: UserProfile) => {
+  const openDetailModal = (user: User) => {
     setSelectedUser(user)
     setShowDetailModal(true)
   }
 
-  const openEditModal = (user: UserProfile) => {
+  const openEditModal = (user: User) => {
     setSelectedUser(user)
     setShowEditModal(true)
   }
