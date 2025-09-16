@@ -1,81 +1,63 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { UserProfile, UserStats } from '@/types'
-import { 
-  getUserProfiles, 
-  createUserProfile, 
-  updateUserProfile, 
-  deleteUserProfile, 
-  subscribeToUserProfiles,
-  getUserStats,
-  searchUserProfiles,
-  getUsersNearExpiry,
-  getActiveUsers,
-  getUsersByContractType
-} from '@/lib/users'
+import { User, UserStats } from '@/types'
+import { userService } from '@/lib/firebase-admin'
 
 export function useUsers() {
-  const [users, setUsers] = useState<UserProfile[]>([])
+  const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    let unsubscribe: (() => void) | undefined
-
-    const initializeUsers = async () => {
+    const fetchUsers = async () => {
       try {
         setLoading(true)
-        
-        // リアルタイム監視を開始
-        unsubscribe = subscribeToUserProfiles((updatedUsers) => {
-          setUsers(updatedUsers)
-          setLoading(false)
-          setError(null)
-        })
-        
+        const userData = await userService.getUsers()
+        setUsers(userData)
+        setError(null)
       } catch (err) {
-        console.error('Error initializing users:', err)
-        setError(err instanceof Error ? err.message : '利用者データの読み込みに失敗しました')
+        console.error('Error fetching users:', err)
+        setError('ユーザーデータの取得に失敗しました。Firebase接続を確認してください。')
+        setUsers([])
+      } finally {
         setLoading(false)
-        
-        // フォールバック: 一度だけ取得を試行
-        try {
-          const fetchedUsers = await getUserProfiles()
-          setUsers(fetchedUsers)
-        } catch (fallbackErr) {
-          console.error('Fallback fetch failed:', fallbackErr)
-        }
       }
     }
 
-    initializeUsers()
-
-    return () => {
-      if (unsubscribe) {
-        unsubscribe()
-      }
-    }
+    fetchUsers()
   }, [])
 
-  const addUser = async (userData: Omit<UserProfile, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const addUser = async (userData: Omit<User, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
       setError(null)
-      const id = await createUserProfile(userData)
+      const id = await userService.createUser(userData)
+      const newUser: User = {
+        ...userData,
+        id,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+      setUsers(prev => [newUser, ...prev])
       return id
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : '利用者の作成に失敗しました'
+      const errorMessage = err instanceof Error ? err.message : 'ユーザーの作成に失敗しました'
       setError(errorMessage)
       throw new Error(errorMessage)
     }
   }
 
-  const editUser = async (id: string, updates: Partial<UserProfile>) => {
+  const editUser = async (id: string, updates: Partial<User>) => {
     try {
       setError(null)
-      await updateUserProfile(id, updates)
+      await userService.updateUser(id, updates)
+      setUsers(prev => prev.map(user => 
+        user.id === id 
+          ? { ...user, ...updates, updatedAt: new Date().toISOString() }
+          : user
+      ))
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : '利用者情報の更新に失敗しました'
+      const errorMessage = err instanceof Error ? err.message : 'ユーザー情報の更新に失敗しました'
       setError(errorMessage)
       throw new Error(errorMessage)
     }
@@ -84,21 +66,10 @@ export function useUsers() {
   const removeUser = async (id: string) => {
     try {
       setError(null)
-      await deleteUserProfile(id)
+      await userService.deleteUser(id)
+      setUsers(prev => prev.filter(user => user.id !== id))
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : '利用者の削除に失敗しました'
-      setError(errorMessage)
-      throw new Error(errorMessage)
-    }
-  }
-
-  const searchUsers = async (searchTerm: string) => {
-    try {
-      setError(null)
-      const results = await searchUserProfiles(searchTerm)
-      return results
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : '検索に失敗しました'
+      const errorMessage = err instanceof Error ? err.message : 'ユーザーの削除に失敗しました'
       setError(errorMessage)
       throw new Error(errorMessage)
     }
@@ -110,12 +81,7 @@ export function useUsers() {
     error,
     addUser,
     editUser,
-    removeUser,
-    searchUsers,
-    refreshUsers: () => {
-      setLoading(true)
-      getUserProfiles().then(setUsers).finally(() => setLoading(false))
-    }
+    removeUser
   }
 }
 
@@ -127,11 +93,8 @@ export function useUserStats() {
     annualUsers: 0,
     teamUsers: 0,
     soloUsers: 0,
-    snsBreakdown: {},
-    industryBreakdown: {},
-    monthlyRevenue: 0,
-    churnRate: 0,
-    averageContractValue: 0
+    totalRevenue: 0,
+    monthlyGrowth: 0
   })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -140,12 +103,68 @@ export function useUserStats() {
     const fetchStats = async () => {
       try {
         setLoading(true)
+        const users = await userService.getUsers()
+        
+        const totalUsers = users.length
+        const activeUsers = users.filter(user => user.isActive).length
+        const trialUsers = users.filter(user => user.contractType === 'trial').length
+        const annualUsers = users.filter(user => user.contractType === 'annual').length
+        const teamUsers = users.filter(user => user.usageType === 'team').length
+        const soloUsers = users.filter(user => user.usageType === 'solo').length
+        
+        // SNS契約数に基づく売上計算
+        const snsPricing = {
+          1: 60000,
+          2: 80000,
+          3: 100000,
+          4: 120000
+        }
+        
+        const totalRevenue = users
+          .filter(user => user.isActive)
+          .reduce((total, user) => {
+            const snsCount = user.snsCount || 1
+            return total + (snsPricing[snsCount as keyof typeof snsPricing] || 60000)
+          }, 0)
+        
+        // 成長率計算（前月比）
+        const currentMonth = new Date().getMonth()
+        const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1
+        const currentMonthUsers = users.filter(user => 
+          new Date(user.createdAt).getMonth() === currentMonth
+        ).length
+        const lastMonthUsers = users.filter(user => 
+          new Date(user.createdAt).getMonth() === lastMonth
+        ).length
+        
+        const monthlyGrowth = lastMonthUsers > 0 
+          ? ((currentMonthUsers - lastMonthUsers) / lastMonthUsers) * 100
+          : 0
+
+        setStats({
+          totalUsers,
+          activeUsers,
+          trialUsers,
+          annualUsers,
+          teamUsers,
+          soloUsers,
+          totalRevenue,
+          monthlyGrowth: Math.round(monthlyGrowth * 10) / 10
+        })
         setError(null)
-        const fetchedStats = await getUserStats()
-        setStats(fetchedStats)
       } catch (err) {
         console.error('Error fetching user stats:', err)
-        setError(err instanceof Error ? err.message : '統計データの読み込みに失敗しました')
+        setError('統計データの取得に失敗しました')
+        setStats({
+          totalUsers: 0,
+          activeUsers: 0,
+          trialUsers: 0,
+          annualUsers: 0,
+          teamUsers: 0,
+          soloUsers: 0,
+          totalRevenue: 0,
+          monthlyGrowth: 0
+        })
       } finally {
         setLoading(false)
       }
@@ -154,52 +173,9 @@ export function useUserStats() {
     fetchStats()
   }, [])
 
-  return { stats, loading, error, refreshStats: () => {} }
-}
-
-export function useUsersByCategory() {
-  const [activeUsers, setActiveUsers] = useState<UserProfile[]>([])
-  const [trialUsers, setTrialUsers] = useState<UserProfile[]>([])
-  const [annualUsers, setAnnualUsers] = useState<UserProfile[]>([])
-  const [expiringUsers, setExpiringUsers] = useState<UserProfile[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    const fetchCategorizedUsers = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-        
-        const [active, trial, annual, expiring] = await Promise.all([
-          getActiveUsers(),
-          getUsersByContractType('trial'),
-          getUsersByContractType('annual'),
-          getUsersNearExpiry(30)
-        ])
-        
-        setActiveUsers(active)
-        setTrialUsers(trial)
-        setAnnualUsers(annual)
-        setExpiringUsers(expiring)
-      } catch (err) {
-        console.error('Error fetching categorized users:', err)
-        setError(err instanceof Error ? err.message : 'カテゴリ別データの読み込みに失敗しました')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchCategorizedUsers()
-  }, [])
-
   return {
-    activeUsers,
-    trialUsers,
-    annualUsers,
-    expiringUsers,
+    stats,
     loading,
-    error,
-    refreshData: () => {}
+    error
   }
 }
