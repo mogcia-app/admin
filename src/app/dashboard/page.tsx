@@ -91,7 +91,8 @@ export default function DashboardPage() {
             <h1 className="text-3xl font-bold tracking-tight">ダッシュボード</h1>
             <p className="text-muted-foreground">
               システムの概要と主要な指標を確認できます
-              {error && <span className="text-destructive ml-2">({error})</span>}
+              {error && <span className="text-destructive ml-2">(エラー: {error})</span>}
+              {!error && !loading && <span className="text-green-600 ml-2">(実際のデータを表示中)</span>}
             </p>
           </div>
           <div className="flex gap-2">

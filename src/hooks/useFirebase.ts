@@ -22,13 +22,13 @@ export function useDashboardData() {
         setStats(dashboardStats)
       } catch (err) {
         console.error('Error fetching dashboard data:', err)
-        setError('ダッシュボードデータの取得に失敗しました')
-        // フォールバック データ
+        setError('ダッシュボードデータの取得に失敗しました。Firebase接続を確認してください。')
+        // エラー時は空のデータを表示
         setStats({
-          totalUsers: 1234,
-          activeUsers: 892,
-          totalRevenue: 2340000,
-          monthlyGrowth: 23.1
+          totalUsers: 0,
+          activeUsers: 0,
+          totalRevenue: 0,
+          monthlyGrowth: 0
         })
       } finally {
         setLoading(false)
