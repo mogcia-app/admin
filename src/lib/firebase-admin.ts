@@ -1,5 +1,5 @@
 // Firebase Admin SDK for server-side operations
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, orderBy, limit } from 'firebase/firestore'
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, orderBy } from 'firebase/firestore'
 import { db } from './firebase'
 import { User } from '@/types'
 
@@ -103,7 +103,7 @@ export const dashboardService = {
   },
 
   // Log admin actions
-  async logAdminAction(action: string, details: any) {
+  async logAdminAction(action: string, details: Record<string, unknown>) {
     try {
       const logsRef = collection(db, 'admin_logs')
       await addDoc(logsRef, {

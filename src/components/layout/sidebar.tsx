@@ -9,7 +9,6 @@ import {
   Settings, 
   BarChart3, 
   User,
-  Menu,
   X
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
