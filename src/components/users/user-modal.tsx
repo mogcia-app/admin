@@ -5,13 +5,13 @@ import { createPortal } from 'react-dom'
 import { X, Save, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { UserProfile, SNSAISettings, BusinessInfo, BillingInfo } from '@/types'
+import { User, SNSAISettings, BusinessInfo, BillingInfo } from '@/types'
 
 interface UserModalProps {
   isOpen: boolean
   onClose: () => void
-  user?: UserProfile | null
-  onSave: (user: Partial<UserProfile>) => void
+  user?: User | null
+  onSave: (user: Partial<User>) => void
 }
 
 const snsOptions = [
@@ -36,7 +36,7 @@ const industryOptions = [
 ]
 
 export function UserModal({ isOpen, onClose, user, onSave }: UserModalProps) {
-  const [formData, setFormData] = useState<Partial<UserProfile>>({
+  const [formData, setFormData] = useState<Partial<User>>({
     name: '',
     email: '',
     usageType: 'solo',

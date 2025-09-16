@@ -46,6 +46,23 @@ export const userService = {
       const docRef = await addDoc(usersRef, {
         ...userData,
         snsCount: userData.snsCount || 1, // デフォルトは1SNS
+        usageType: userData.usageType || 'solo',
+        contractType: userData.contractType || 'trial',
+        contractSNS: userData.contractSNS || [],
+        snsAISettings: userData.snsAISettings || {},
+        businessInfo: userData.businessInfo || {
+          industry: '',
+          companySize: 'individual',
+          businessType: 'b2c',
+          description: '',
+          targetMarket: '',
+          goals: [],
+          challenges: [],
+          currentSNSStrategy: ''
+        },
+        status: userData.status || 'active',
+        contractStartDate: userData.contractStartDate || new Date().toISOString(),
+        contractEndDate: userData.contractEndDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30日後
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       })

@@ -5,7 +5,7 @@ import { Users, Plus, Search, Edit, Trash2, Eye, Database, Loader2, Calendar, Do
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { UserModal } from '@/components/users/user-modal'
-import { UserProfile } from '@/types'
+import { User } from '@/types'
 import { useUsers, useUserStats } from '@/hooks/useUsers'
 import { seedUserData } from '@/lib/users'
 
@@ -27,11 +27,11 @@ const snsLabels = {
 export default function UsersPage() {
   const { users, loading, error, addUser, editUser, removeUser } = useUsers()
   const { stats } = useUserStats()
-  const [filteredUsers, setFilteredUsers] = useState<UserProfile[]>([])
+  const [filteredUsers, setFilteredUsers] = useState<User[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedStatus, setSelectedStatus] = useState<string>('all')
   const [selectedContractType, setSelectedContractType] = useState<string>('all')
-  const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null)
+  const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState(false)

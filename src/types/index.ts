@@ -7,17 +7,18 @@ export interface User {
   updatedAt: string
   isActive: boolean
   snsCount: number // 契約SNS数 (1-4)
-}
-
-export interface User {
-  id: string
-  name: string
-  email: string
-  role: 'admin' | 'user' | 'moderator'
-  createdAt: string
-  updatedAt: string
-  isActive: boolean
-  snsCount: number // 契約SNS数 (1-4)
+  // ビジネス情報
+  usageType: 'team' | 'solo'
+  contractType: 'annual' | 'trial'
+  contractSNS: ('instagram' | 'x' | 'youtube' | 'tiktok')[]
+  snsAISettings: SNSAISettings
+  businessInfo: BusinessInfo
+  status: 'active' | 'inactive' | 'suspended'
+  lastLoginAt?: string
+  contractStartDate: string
+  contractEndDate: string
+  billingInfo?: BillingInfo
+  notes?: string
 }
 
 export interface AdminLayoutProps {
