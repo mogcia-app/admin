@@ -179,7 +179,10 @@ export default function ProfilePage() {
             <CardHeader className="text-center">
               <div className="flex flex-col items-center space-y-4">
                 <Avatar className="h-24 w-24">
-                  <AvatarImage src={isEditing ? formData.avatar : profile.avatar} />
+                  <AvatarImage 
+                    src={isEditing ? formData.avatar : profile.avatar} 
+                    alt={`${isEditing ? formData.name : profile.name}のアバター`}
+                  />
                   <AvatarFallback className="text-2xl">
                     {isEditing ? formData.name.charAt(0) : profile.name.charAt(0)}
                   </AvatarFallback>

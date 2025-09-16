@@ -31,6 +31,11 @@ export function Avatar({ className, children, ...props }: AvatarProps) {
 }
 
 export function AvatarImage({ className, src, alt, ...props }: AvatarImageProps) {
+  // 空の文字列や無効なsrcの場合はnullを返してレンダリングしない
+  if (!src || src === '') {
+    return null
+  }
+
   return (
     <img
       className={cn('aspect-square h-full w-full', className)}
