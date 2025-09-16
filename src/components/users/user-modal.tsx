@@ -42,6 +42,7 @@ export function UserModal({ isOpen, onClose, user, onSave }: UserModalProps) {
     usageType: 'solo',
     contractType: 'trial',
     contractSNS: [],
+    snsCount: 1, // デフォルトは1SNS
     snsAISettings: {},
     businessInfo: {
       industry: '',
@@ -299,7 +300,7 @@ export function UserModal({ isOpen, onClose, user, onSave }: UserModalProps) {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-4 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-2">利用形態</label>
                   <select
@@ -321,6 +322,20 @@ export function UserModal({ isOpen, onClose, user, onSave }: UserModalProps) {
                   >
                     <option value="trial">お試し1ヶ月契約</option>
                     <option value="annual">年間契約</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">SNS契約数</label>
+                  <select
+                    value={formData.snsCount || 1}
+                    onChange={(e) => setFormData({ ...formData, snsCount: parseInt(e.target.value) })}
+                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <option value={1}>1SNS (60,000円)</option>
+                    <option value={2}>2SNS (80,000円)</option>
+                    <option value={3}>3SNS (100,000円)</option>
+                    <option value={4}>4SNS (120,000円)</option>
                   </select>
                 </div>
 

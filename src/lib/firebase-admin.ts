@@ -45,6 +45,7 @@ export const userService = {
       const usersRef = collection(db, 'users')
       const docRef = await addDoc(usersRef, {
         ...userData,
+        snsCount: userData.snsCount || 1, // デフォルトは1SNS
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       })
@@ -94,9 +95,19 @@ export const dashboardService = {
       const totalUsers = users.length
       const activeUsersCount = activeUsers.length
       
-      // ユーザー数に基づく売上計算（月額プラン想定）
-      const averageRevenuePerUser = 2500 // 月額2,500円
-      const totalRevenue = activeUsersCount * averageRevenuePerUser
+      // SNS契約数に基づく売上計算
+      // 1SNS: 60,000円, 2SNS: 80,000円, 3SNS: 100,000円, 4SNS: 120,000円
+      const snsPricing = {
+        1: 60000,
+        2: 80000,
+        3: 100000,
+        4: 120000
+      }
+      
+      const totalRevenue = activeUsers.reduce((total, user) => {
+        const snsCount = user.snsCount || 1 // デフォルトは1SNS
+        return total + (snsPricing[snsCount as keyof typeof snsPricing] || 60000)
+      }, 0)
       
       // 成長率計算（前月比）
       const currentMonth = new Date().getMonth()

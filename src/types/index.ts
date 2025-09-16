@@ -6,6 +6,7 @@ export interface User {
   createdAt: string
   updatedAt: string
   isActive: boolean
+  snsCount: number // 契約SNS数 (1-4)
 }
 
 export interface AdminLayoutProps {
