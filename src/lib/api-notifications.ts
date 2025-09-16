@@ -28,15 +28,24 @@ export async function getNotifications(
 // 通知作成 (Cloud Functions API使用)
 export async function createNotification(notificationData: {
   title: string
-  message: string
+  content: string
   type?: string
-  targetUsers?: string
-  scheduledAt?: string
   priority?: string
+  status?: string
+  targetAudience?: string
+  scheduledAt?: string
+  expiresAt?: string
+  tags?: string[]
+  isSticky?: boolean
   createdBy: string
 }): Promise<string> {
   try {
-    const response = await apiPost(API_ENDPOINTS.notifications.create, notificationData)
+    // undefinedの値を除外
+    const cleanData = Object.fromEntries(
+      Object.entries(notificationData).filter(([_, value]) => value !== undefined)
+    )
+    
+    const response = await apiPost(API_ENDPOINTS.notifications.create, cleanData)
     console.log('Notification created with ID:', response.id)
     return response.id
   } catch (error) {

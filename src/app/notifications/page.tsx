@@ -61,21 +61,31 @@ export default function NotificationsPage() {
 
   const handleCreateNotification = async (notificationData: Partial<Notification>) => {
     try {
-      await addNotification({
+      // undefinedの値を除外してクリーンなデータを作成
+      const cleanData = {
         title: notificationData.title || '',
         content: notificationData.content || '',
         type: notificationData.type || 'info',
         priority: notificationData.priority || 'medium',
         status: notificationData.status || 'draft',
         targetAudience: notificationData.targetAudience || 'all',
-        scheduledAt: notificationData.scheduledAt,
-        expiresAt: notificationData.expiresAt,
         createdBy: 'admin_001', // 実際は認証されたユーザーのID
         tags: notificationData.tags || [],
         isSticky: notificationData.isSticky || false
-      })
+      }
+
+      // 日時フィールドは値がある場合のみ追加
+      if (notificationData.scheduledAt) {
+        cleanData.scheduledAt = notificationData.scheduledAt
+      }
+      if (notificationData.expiresAt) {
+        cleanData.expiresAt = notificationData.expiresAt
+      }
+
+      await addNotification(cleanData)
       alert('お知らせを作成しました！')
     } catch (err) {
+      console.error('Notification creation error:', err)
       alert('お知らせの作成に失敗しました: ' + (err instanceof Error ? err.message : '不明なエラー'))
     }
   }

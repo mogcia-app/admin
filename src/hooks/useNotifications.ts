@@ -45,7 +45,13 @@ export function useNotifications(status?: string) {
   const addNotification = async (notificationData: Omit<Notification, 'id' | 'createdAt' | 'updatedAt' | 'readCount' | 'clickCount'>) => {
     try {
       setError(null)
-      const id = await createNotification(notificationData)
+      
+      // undefinedの値を除外
+      const cleanData = Object.fromEntries(
+        Object.entries(notificationData).filter(([_, value]) => value !== undefined)
+      ) as Omit<Notification, 'id' | 'createdAt' | 'updatedAt' | 'readCount' | 'clickCount'>
+      
+      const id = await createNotification(cleanData)
       
       // ローカル状態を更新
       const newNotification: Notification = {
