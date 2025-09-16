@@ -1,0 +1,191 @@
+'use client'
+
+import React, { useState } from 'react'
+import { Users, UserCheck, TrendingUp, DollarSign, Loader2, Database, Wifi } from 'lucide-react'
+import { StatsCard } from '@/components/dashboard/stats-card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { useDashboardData } from '@/hooks/useFirebase'
+import { seedFirestoreData } from '@/lib/seed-data'
+import { testFirebaseConnection } from '@/lib/firebase-test'
+
+export default function DashboardPage() {
+  const { stats, loading, error } = useDashboardData()
+  const [seeding, setSeeding] = useState(false)
+  const [testing, setTesting] = useState(false)
+
+  const handleSeedData = async () => {
+    try {
+      setSeeding(true)
+      await seedFirestoreData()
+      alert('サンプルデータの作成が完了しました！ページをリロードしてください。')
+    } catch (err) {
+      console.error('Error seeding data:', err)
+      alert('データの作成中にエラーが発生しました。')
+    } finally {
+      setSeeding(false)
+    }
+  }
+
+  const handleTestConnection = async () => {
+    try {
+      setTesting(true)
+      const result = await testFirebaseConnection()
+      if (result.success) {
+        alert('✅ Firebase接続テスト成功！\n' + result.message)
+      } else {
+        alert('❌ Firebase接続テスト失敗\n' + result.message)
+      }
+    } catch (err) {
+      console.error('Error testing connection:', err)
+      alert('接続テスト中にエラーが発生しました。')
+    } finally {
+      setTesting(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <span className="ml-2">ダッシュボードデータを読み込み中...</span>
+      </div>
+    )
+  }
+
+  const statsCards = [
+    {
+      title: '総ユーザー数',
+      value: stats.totalUsers.toLocaleString(),
+      description: '登録済みユーザー',
+      icon: Users,
+      trend: { value: 12, isPositive: true }
+    },
+    {
+      title: 'アクティブユーザー',
+      value: stats.activeUsers.toLocaleString(),
+      description: '過去30日間',
+      icon: UserCheck,
+      trend: { value: 8, isPositive: true }
+    },
+    {
+      title: '月間成長率',
+      value: `${stats.monthlyGrowth}%`,
+      description: 'ユーザー増加率',
+      icon: TrendingUp,
+      trend: { value: 4, isPositive: true }
+    },
+    {
+      title: '月間売上',
+      value: `¥${stats.totalRevenue.toLocaleString()}`,
+      description: '今月の売上',
+      icon: DollarSign,
+      trend: { value: 15, isPositive: true }
+    }
+  ]
+
+  return (
+        <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">ダッシュボード</h1>
+            <p className="text-muted-foreground">
+              システムの概要と主要な指標を確認できます
+              {error && <span className="text-destructive ml-2">({error})</span>}
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button 
+              onClick={handleTestConnection} 
+              disabled={testing}
+              variant="outline"
+            >
+              {testing ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  テスト中...
+                </>
+              ) : (
+                <>
+                  <Wifi className="h-4 w-4 mr-2" />
+                  接続テスト
+                </>
+              )}
+            </Button>
+            <Button 
+              onClick={handleSeedData} 
+              disabled={seeding}
+              variant="outline"
+            >
+              {seeding ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  作成中...
+                </>
+              ) : (
+                <>
+                  <Database className="h-4 w-4 mr-2" />
+                  サンプルデータ作成
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+
+        {/* Stats Grid */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {statsCards.map((stat, index) => (
+            <StatsCard key={index} {...stat} />
+          ))}
+        </div>
+
+        {/* Charts and Tables */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+          <Card className="col-span-4">
+            <CardHeader>
+              <CardTitle>概要</CardTitle>
+            </CardHeader>
+            <CardContent className="pl-2">
+              <div className="h-[200px] flex items-center justify-center text-muted-foreground">
+                チャートコンポーネントをここに配置
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="col-span-3">
+            <CardHeader>
+              <CardTitle>最近のアクティビティ</CardTitle>
+              <CardDescription>
+                直近の重要な活動
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full mr-3"></div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">新規ユーザー登録</p>
+                    <p className="text-xs text-muted-foreground">2分前</p>
+                  </div>
+                </div>
+                <div className="flex items-center">
+                  <div className="w-2 h-2 bg-green-500 rounded-full mr-3"></div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">システム更新完了</p>
+                    <p className="text-xs text-muted-foreground">1時間前</p>
+                  </div>
+                </div>
+                <div className="flex items-center">
+                  <div className="w-2 h-2 bg-yellow-500 rounded-full mr-3"></div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">メンテナンス予定</p>
+                    <p className="text-xs text-muted-foreground">明日 2:00 AM</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+  )
+}
