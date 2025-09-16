@@ -14,7 +14,8 @@ import {
   TrendingUp,
   Bell,
   Shield,
-  Bot
+  Bot,
+  Monitor
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -68,6 +69,12 @@ const sidebarItems: SidebarItem[] = [
     label: 'AIアシスタント',
     icon: Bot,
     href: '/ai-assistant',
+  },
+  {
+    id: 'monitoring',
+    label: 'エラー監視・営業',
+    icon: Monitor,
+    href: '/monitoring',
   },
   {
     id: 'settings',
