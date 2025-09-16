@@ -70,16 +70,16 @@ const sidebarItems: SidebarItem[] = [
     href: '/monitoring',
   },
   {
-    id: 'settings',
-    label: '設定',
-    icon: Settings,
-    href: '/settings',
-  },
-  {
     id: 'profile',
     label: 'プロフィール',
     icon: User,
     href: '/profile',
+  },
+  {
+    id: 'settings',
+    label: '設定',
+    icon: Settings,
+    href: '/settings',
   },
 ]
 
