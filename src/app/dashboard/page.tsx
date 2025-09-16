@@ -1,31 +1,16 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Users, UserCheck, TrendingUp, DollarSign, Loader2, Database, Wifi } from 'lucide-react'
+import { Users, UserCheck, TrendingUp, DollarSign, Loader2, Wifi } from 'lucide-react'
 import { StatsCard } from '@/components/dashboard/stats-card'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useDashboardData } from '@/hooks/useFirebase'
-import { seedFirestoreData } from '@/lib/seed-data'
 import { testFirebaseConnection } from '@/lib/firebase-test'
 
 export default function DashboardPage() {
   const { stats, loading, error } = useDashboardData()
-  const [seeding, setSeeding] = useState(false)
   const [testing, setTesting] = useState(false)
-
-  const handleSeedData = async () => {
-    try {
-      setSeeding(true)
-      await seedFirestoreData()
-      alert('サンプルデータの作成が完了しました！ページをリロードしてください。')
-    } catch (err) {
-      console.error('Error seeding data:', err)
-      alert('データの作成中にエラーが発生しました。')
-    } finally {
-      setSeeding(false)
-    }
-  }
 
   const handleTestConnection = async () => {
     try {
@@ -109,24 +94,7 @@ export default function DashboardPage() {
               ) : (
                 <>
                   <Wifi className="h-4 w-4 mr-2" />
-                  接続テスト
-                </>
-              )}
-            </Button>
-            <Button 
-              onClick={handleSeedData} 
-              disabled={seeding}
-              variant="outline"
-            >
-              {seeding ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  作成中...
-                </>
-              ) : (
-                <>
-                  <Database className="h-4 w-4 mr-2" />
-                  サンプルデータ作成
+                  Firebase接続テスト
                 </>
               )}
             </Button>

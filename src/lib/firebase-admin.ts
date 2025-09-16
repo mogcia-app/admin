@@ -90,11 +90,33 @@ export const dashboardService = {
       const users = await userService.getUsers()
       const activeUsers = users.filter(user => user.isActive)
       
+      // 実際のユーザー数に基づいて売上を計算
+      const totalUsers = users.length
+      const activeUsersCount = activeUsers.length
+      
+      // ユーザー数に基づく売上計算（月額プラン想定）
+      const averageRevenuePerUser = 2500 // 月額2,500円
+      const totalRevenue = activeUsersCount * averageRevenuePerUser
+      
+      // 成長率計算（前月比）
+      const currentMonth = new Date().getMonth()
+      const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1
+      const currentMonthUsers = users.filter(user => 
+        new Date(user.createdAt).getMonth() === currentMonth
+      ).length
+      const lastMonthUsers = users.filter(user => 
+        new Date(user.createdAt).getMonth() === lastMonth
+      ).length
+      
+      const monthlyGrowth = lastMonthUsers > 0 
+        ? ((currentMonthUsers - lastMonthUsers) / lastMonthUsers) * 100
+        : 0
+      
       return {
-        totalUsers: users.length,
-        activeUsers: activeUsers.length,
-        totalRevenue: 2340000, // This would come from a revenue collection
-        monthlyGrowth: 23.1 // This would be calculated from historical data
+        totalUsers,
+        activeUsers: activeUsersCount,
+        totalRevenue,
+        monthlyGrowth: Math.round(monthlyGrowth * 10) / 10
       }
     } catch (error) {
       console.error('Error getting dashboard stats:', error)
