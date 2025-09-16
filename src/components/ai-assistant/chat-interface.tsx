@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent } from '@/components/ui/card'
 import { AdminAIChat, AIMessage } from '@/types'
+import { adminAI, isAIAvailable } from '@/lib/ai-service'
 import { 
   Send, 
   Bot, 
@@ -14,7 +15,8 @@ import {
   ThumbsUp, 
   ThumbsDown,
   RotateCcw,
-  Sparkles
+  Sparkles,
+  AlertTriangle
 } from 'lucide-react'
 
 interface ChatInterfaceProps {

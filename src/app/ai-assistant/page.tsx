@@ -9,6 +9,7 @@ import { ChatInterface } from '@/components/ai-assistant/chat-interface'
 import { AICapabilities } from '@/components/ai-assistant/ai-capabilities'
 import { useAIChats, useAIChat, useAICapabilities } from '@/hooks/useAIAssistant'
 import { seedAIData } from '@/lib/ai-assistant'
+import { adminAI, isAIAvailable } from '@/lib/ai-service'
 
 export default function AIAssistantPage() {
   const adminId = 'admin_001' // 実際は認証されたユーザーのID
@@ -42,6 +43,7 @@ export default function AIAssistantPage() {
   
   const [seeding, setSeeding] = useState(false)
   const [activeView, setActiveView] = useState<'chat' | 'capabilities'>('chat')
+  const [aiAvailable] = useState(isAIAvailable())
 
   const handleSeedData = async () => {
     try {

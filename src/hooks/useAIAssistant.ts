@@ -16,6 +16,7 @@ import {
   getAICapabilities,
   generateAIResponse
 } from '@/lib/ai-assistant'
+import { adminAI, isAIAvailable, AIMessage as AIServiceMessage } from '@/lib/ai-service'
 
 export function useAIChats(adminId: string) {
   const [chats, setChats] = useState<AdminAIChat[]>([])
@@ -166,21 +167,38 @@ export function useAIChat(chatId: string | null) {
         updatedAt: new Date().toISOString()
       } : null)
 
-      // AI応答を生成
-      const aiResponse = await generateAIResponse(content, {
-        chatHistory: chat.messages,
-        adminId: chat.adminId
-      })
+      // AI機能が利用可能かチェック
+      let aiResponseContent: string
+      let aiMetadata: any = {
+        dataQuery: content.toLowerCase().includes('データ') || content.toLowerCase().includes('分析'),
+        chartGenerated: false,
+        actionTaken: 'response_generated'
+      }
+
+      if (isAIAvailable()) {
+        try {
+          // 実際のAI APIを使用して応答を生成
+          const aiResponse = await adminAI.askQuestion(content)
+          aiResponseContent = aiResponse.message
+          aiMetadata.usage = aiResponse.usage
+        } catch (aiError) {
+          console.error('AI API Error:', aiError)
+          aiResponseContent = `申し訳ございません。AI機能でエラーが発生しました。\n\n${aiError instanceof Error ? aiError.message : 'AI APIに接続できませんでした。'}\n\nAPIキーが正しく設定されているか確認してください。`
+          aiMetadata.actionTaken = 'error_response'
+        }
+      } else {
+        // フォールバック: AI機能が無効な場合
+        aiResponseContent = await generateAIResponse(content, {
+          chatHistory: chat.messages,
+          adminId: chat.adminId
+        })
+      }
 
       // AI応答メッセージを追加
       const assistantMessage: Omit<AIMessage, 'id' | 'timestamp'> = {
         role: 'assistant',
-        content: aiResponse,
-        metadata: {
-          dataQuery: content.toLowerCase().includes('データ') || content.toLowerCase().includes('分析'),
-          chartGenerated: false,
-          actionTaken: 'response_generated'
-        }
+        content: aiResponseContent,
+        metadata: aiMetadata
       }
 
       await addMessageToChat(chatId, assistantMessage)

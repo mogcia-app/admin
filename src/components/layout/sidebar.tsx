@@ -3,11 +3,11 @@
 import React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { 
-  LayoutDashboard, 
-  Users, 
-  Settings, 
-  BarChart3, 
+import {
+  LayoutDashboard,
+  Users,
+  Settings,
+  BarChart3,
   User,
   X,
   MessageSquare,
@@ -15,7 +15,8 @@ import {
   Bell,
   Shield,
   Bot,
-  Monitor
+  Monitor,
+  TestTube
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -69,6 +70,12 @@ const sidebarItems: SidebarItem[] = [
     label: 'AIアシスタント',
     icon: Bot,
     href: '/ai-assistant',
+  },
+  {
+    id: 'ai-test',
+    label: 'AIテスト',
+    icon: TestTube,
+    href: '/ai-test',
   },
   {
     id: 'monitoring',
