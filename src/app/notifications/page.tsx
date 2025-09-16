@@ -61,8 +61,8 @@ export default function NotificationsPage() {
 
   const handleCreateNotification = async (notificationData: Partial<Notification>) => {
     try {
-      // undefinedの値を除外してクリーンなデータを作成
-      const cleanData = {
+      // 必要なフィールドのみを含むデータを作成
+      const baseData = {
         title: notificationData.title || '',
         content: notificationData.content || '',
         type: notificationData.type || 'info',
@@ -75,11 +75,10 @@ export default function NotificationsPage() {
       }
 
       // 日時フィールドは値がある場合のみ追加
-      if (notificationData.scheduledAt) {
-        cleanData.scheduledAt = notificationData.scheduledAt
-      }
-      if (notificationData.expiresAt) {
-        cleanData.expiresAt = notificationData.expiresAt
+      const cleanData = {
+        ...baseData,
+        ...(notificationData.scheduledAt && { scheduledAt: notificationData.scheduledAt }),
+        ...(notificationData.expiresAt && { expiresAt: notificationData.expiresAt })
       }
 
       await addNotification(cleanData)
