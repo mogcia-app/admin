@@ -9,6 +9,17 @@ export interface User {
   snsCount: number // 契約SNS数 (1-4)
 }
 
+export interface User {
+  id: string
+  name: string
+  email: string
+  role: 'admin' | 'user' | 'moderator'
+  createdAt: string
+  updatedAt: string
+  isActive: boolean
+  snsCount: number // 契約SNS数 (1-4)
+}
+
 export interface AdminLayoutProps {
   children: React.ReactNode
 }
