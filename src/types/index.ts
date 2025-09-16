@@ -412,6 +412,16 @@ export interface AIMessage {
   }
 }
 
+export interface AIResponse {
+  message: string
+  usage?: {
+    promptTokens: number
+    completionTokens: number
+    totalTokens: number
+  }
+  model: string
+}
+
 export interface AICapability {
   id: string
   name: string

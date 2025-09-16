@@ -113,9 +113,7 @@ export async function getDraftNotifications(): Promise<Notification[]> {
 export async function sendNotificationNow(id: string): Promise<void> {
   try {
     await updateNotification(id, {
-      status: 'sent',
-      sentAt: new Date().toISOString(),
-      scheduledAt: null
+      status: 'published'
     })
   } catch (error) {
     console.error('Error sending notification immediately:', error)
@@ -128,7 +126,7 @@ export async function rescheduleNotification(id: string, newScheduledAt: string)
   try {
     await updateNotification(id, {
       scheduledAt: newScheduledAt,
-      status: 'scheduled'
+      status: 'draft'
     })
   } catch (error) {
     console.error('Error rescheduling notification:', error)

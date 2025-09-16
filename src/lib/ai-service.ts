@@ -1,8 +1,8 @@
 import OpenAI from 'openai'
 
-// OpenAI クライアントの初期化（動的APIキー対応）
+// OpenAI クライアントの初期化（サーバーサイド対応）
 const getOpenAIClient = (apiKey?: string) => {
-  const key = apiKey || process.env.NEXT_PUBLIC_OPENAI_API_KEY || process.env.OPENAI_API_KEY
+  const key = apiKey || process.env.OPENAI_API_KEY || process.env.NEXT_PUBLIC_OPENAI_API_KEY
   
   if (!key) {
     throw new Error('OpenAI APIキーが設定されていません')
@@ -10,7 +10,7 @@ const getOpenAIClient = (apiKey?: string) => {
   
   return new OpenAI({
     apiKey: key,
-    dangerouslyAllowBrowser: true // クライアントサイドでの使用を許可
+    // サーバーサイドでは dangerouslyAllowBrowser は不要
   })
 }
 

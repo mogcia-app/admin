@@ -105,13 +105,45 @@ export async function getKPIDashboardData(): Promise<KPIDashboardData> {
       getConversionFunnel()
     ])
 
+    // メトリクスから概要データを抽出
+    const totalRevenueMetric = metrics.find(m => m.name === 'totalRevenue')
+    const mrrMetric = metrics.find(m => m.name === 'monthlyRecurringRevenue')
+    const aruMetric = metrics.find(m => m.name === 'averageRevenuePerUser')
+    const clvMetric = metrics.find(m => m.name === 'customerLifetimeValue')
+    const totalUsersMetric = metrics.find(m => m.name === 'totalUsers')
+    const activeUsersMetric = metrics.find(m => m.name === 'activeUsers')
+    const newUsersMetric = metrics.find(m => m.name === 'newUsersThisMonth')
+    const churnRateMetric = metrics.find(m => m.name === 'churnRate')
+
     return {
-      metrics,
-      revenueData,
-      userAcquisitionData,
-      engagementMetrics,
-      retentionMetrics,
-      conversionFunnel
+      overview: {
+        totalRevenue: totalRevenueMetric?.value || 0,
+        monthlyRecurringRevenue: mrrMetric?.value || 0,
+        averageRevenuePerUser: aruMetric?.value || 0,
+        customerLifetimeValue: clvMetric?.value || 0,
+        totalUsers: totalUsersMetric?.value || 0,
+        activeUsers: activeUsersMetric?.value || 0,
+        newUsersThisMonth: newUsersMetric?.value || 0,
+        churnRate: churnRateMetric?.value || 0
+      },
+      revenueMetrics: {
+        monthlyRevenue: revenueData,
+        revenueBySource: {},
+        revenueByPlan: {},
+        revenueGrowth: 0
+      },
+      userMetrics: {
+        userGrowth: userAcquisitionData,
+        acquisitionBySource: {},
+        userRetention: retentionMetrics,
+        engagementMetrics: engagementMetrics
+      },
+      conversionMetrics: {
+        trialToPayingConversion: 0,
+        signupToTrialConversion: 0,
+        funnels: Array.isArray(conversionFunnel) ? conversionFunnel : (conversionFunnel ? [conversionFunnel] : [])
+      },
+      kpiTargets: []
     }
   } catch (error) {
     console.error('Error fetching KPI dashboard data:', error)
@@ -121,18 +153,18 @@ export async function getKPIDashboardData(): Promise<KPIDashboardData> {
 
 // KPI統計計算
 export function calculateKPIStats(data: KPIDashboardData) {
-  const totalRevenue = data.revenueData.reduce((sum, item) => sum + item.amount, 0)
-  const totalUsers = data.userAcquisitionData.reduce((sum, item) => sum + item.newUsers, 0)
-  const avgEngagement = data.engagementMetrics.length > 0 
-    ? data.engagementMetrics.reduce((sum, item) => sum + item.engagementRate, 0) / data.engagementMetrics.length
+  const totalRevenue = data.overview.totalRevenue
+  const totalUsers = data.overview.totalUsers
+  const avgEngagement = data.userMetrics.engagementMetrics.length > 0 
+    ? data.userMetrics.engagementMetrics.reduce((sum, item) => sum + item.averageSessionDuration, 0) / data.userMetrics.engagementMetrics.length
     : 0
 
   return {
     totalRevenue,
     totalUsers,
     avgEngagement: Math.round(avgEngagement * 100) / 100,
-    activeMetrics: data.metrics.filter(m => m.isActive).length,
-    totalMetrics: data.metrics.length,
-    conversionRate: data.conversionFunnel?.steps[data.conversionFunnel.steps.length - 1]?.conversionRate || 0
+    activeMetrics: data.kpiTargets.length,
+    totalMetrics: data.kpiTargets.length,
+    conversionRate: data.conversionMetrics.trialToPayingConversion
   }
 }

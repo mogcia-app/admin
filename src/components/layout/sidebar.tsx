@@ -16,7 +16,6 @@ import {
   Shield,
   Bot,
   Monitor,
-  TestTube
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -70,12 +69,6 @@ const sidebarItems: SidebarItem[] = [
     label: 'AIアシスタント',
     icon: Bot,
     href: '/ai-assistant',
-  },
-  {
-    id: 'ai-test',
-    label: 'AIテスト',
-    icon: TestTube,
-    href: '/ai-test',
   },
   {
     id: 'monitoring',

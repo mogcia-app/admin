@@ -1,15 +1,16 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Bot, Database, Loader2, RefreshCw, MessageSquare, Sparkles } from 'lucide-react'
+import { Bot, Database, Loader2, RefreshCw, MessageSquare, Sparkles, Key, CheckCircle, XCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import { ChatSidebar } from '@/components/ai-assistant/chat-sidebar'
 import { ChatInterface } from '@/components/ai-assistant/chat-interface'
 import { AICapabilities } from '@/components/ai-assistant/ai-capabilities'
 import { useAIChats, useAIChat, useAICapabilities } from '@/hooks/useAIAssistant'
 import { seedAIData } from '@/lib/ai-assistant'
-import { adminAI, isAIAvailable } from '@/lib/ai-service'
+import { sendChatMessage, isAIAvailable } from '@/lib/ai-client'
 
 export default function AIAssistantPage() {
   const adminId = 'admin_001' // 実際は認証されたユーザーのID
@@ -43,7 +44,22 @@ export default function AIAssistantPage() {
   
   const [seeding, setSeeding] = useState(false)
   const [activeView, setActiveView] = useState<'chat' | 'capabilities'>('chat')
-  const [aiAvailable] = useState(isAIAvailable())
+  const [aiAvailable, setAiAvailable] = useState(isAIAvailable())
+  const [apiKey, setApiKey] = useState('')
+  const [showApiKeyInput, setShowApiKeyInput] = useState(!aiAvailable)
+
+  const handleApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newApiKey = e.target.value
+    setApiKey(newApiKey)
+    
+    // 動的にAPIキーを設定（サーバーサイドでは不要）
+    if (newApiKey) {
+      setAiAvailable(true)
+      setShowApiKeyInput(false)
+    } else {
+      setAiAvailable(false)
+    }
+  }
 
   const handleSeedData = async () => {
     try {
@@ -100,47 +116,96 @@ export default function AIAssistantPage() {
   }
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex">
+    <div className="h-[calc(100vh-4rem)] flex bg-gray-50 dark:bg-gray-900">
       {/* サイドバー */}
-      <ChatSidebar
-        chats={chats}
-        selectedChatId={selectedChatId}
-        loading={chatsLoading}
-        onSelectChat={handleSelectChat}
-        onCreateChat={handleCreateChat}
-        onUpdateTitle={updateTitle}
-        onDeleteChat={removeChat}
-      />
+      <div className="w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col">
+        <ChatSidebar
+          chats={chats}
+          selectedChatId={selectedChatId}
+          loading={chatsLoading}
+          onSelectChat={handleSelectChat}
+          onCreateChat={handleCreateChat}
+          onUpdateTitle={updateTitle}
+          onDeleteChat={removeChat}
+        />
+      </div>
 
       {/* メインコンテンツ */}
       <div className="flex-1 flex flex-col">
         {/* ヘッダー */}
-        <div className="flex items-center justify-between p-6 border-b border-border">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-600 rounded-full flex items-center justify-center">
-                <Bot className="h-5 w-5 text-white" />
+        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+                <Bot className="h-6 w-6 text-white" />
               </div>
-              AIアシスタント
-            </h1>
-            <p className="text-muted-foreground">
-              Signal App管理業務の効率化をAIがサポートします
-              {(chatsError || chatError || capabilitiesError) && (
-                <span className="text-destructive ml-2">
-                  ({chatsError || chatError || capabilitiesError})
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                  AIアシスタント
+                </h1>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Signal App管理業務の効率化をAIがサポートします
+                  {(chatsError || chatError || capabilitiesError) && (
+                    <span className="text-red-500 ml-2">
+                      ({chatsError || chatError || capabilitiesError})
+                    </span>
+                  )}
+                </p>
+              </div>
+            </div>
+          
+            {/* AI機能ステータスとAPIキー設定 */}
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700">
+                {aiAvailable ? (
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                ) : (
+                  <XCircle className="h-4 w-4 text-red-500" />
+                )}
+                <span className={`text-sm font-medium ${aiAvailable ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
+                  {aiAvailable ? 'AI利用可能' : 'AI利用不可'}
                 </span>
+              </div>
+              
+              {showApiKeyInput && (
+                <div className="flex items-center gap-2">
+                  <Key className="h-4 w-4 text-gray-500" />
+                  <Input
+                    type="password"
+                    placeholder="OpenAI APIキーを入力"
+                    value={apiKey}
+                    onChange={handleApiKeyChange}
+                    className="w-64"
+                  />
+                </div>
               )}
-            </p>
+              
+              {!showApiKeyInput && !aiAvailable && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowApiKeyInput(true)}
+                  className="bg-white dark:bg-gray-700"
+                >
+                  <Key className="h-4 w-4 mr-2" />
+                  APIキー設定
+                </Button>
+              )}
+            </div>
           </div>
-          <div className="flex gap-2">
+          
+          {/* アクションボタン */}
+          <div className="flex items-center gap-3 mt-4">
             <Button
               onClick={() => setActiveView(activeView === 'chat' ? 'capabilities' : 'chat')}
-              variant="outline"
+              variant={activeView === 'chat' ? 'default' : 'outline'}
+              size="sm"
+              className="bg-purple-600 hover:bg-purple-700 text-white"
             >
               {activeView === 'chat' ? (
                 <>
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  機能紹介
+                  <Database className="h-4 w-4 mr-2" />
+                  機能一覧
                 </>
               ) : (
                 <>
@@ -150,31 +215,34 @@ export default function AIAssistantPage() {
               )}
             </Button>
             <Button
-              onClick={handleSeedData}
-              disabled={seeding}
+              onClick={handleRefresh}
               variant="outline"
+              size="sm"
+              disabled={chatsLoading}
+              className="bg-white dark:bg-gray-700"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${chatsLoading ? 'animate-spin' : ''}`} />
+              更新
+            </Button>
+            <Button
+              onClick={handleSeedData}
+              variant="outline"
+              size="sm"
+              disabled={seeding}
+              className="bg-white dark:bg-gray-700"
             >
               {seeding ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  作成中...
-                </>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               ) : (
-                <>
-                  <Database className="h-4 w-4 mr-2" />
-                  サンプルデータ作成
-                </>
+                <Database className="h-4 w-4 mr-2" />
               )}
-            </Button>
-            <Button onClick={handleRefresh} variant="outline">
-              <RefreshCw className="h-4 w-4 mr-2" />
-              更新
+              {seeding ? '作成中...' : 'サンプルデータ作成'}
             </Button>
           </div>
         </div>
 
         {/* 統計情報 */}
-        <div className="p-6 border-b border-border">
+        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
           <div className="grid gap-4 md:grid-cols-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -219,7 +287,7 @@ export default function AIAssistantPage() {
         </div>
 
         {/* メインコンテンツエリア */}
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden bg-gray-50 dark:bg-gray-900">
           {activeView === 'chat' ? (
             <ChatInterface
               chat={chat}
@@ -229,7 +297,7 @@ export default function AIAssistantPage() {
               onClearChat={clearMessages}
             />
           ) : (
-            <div className="h-full overflow-y-auto p-6">
+            <div className="h-full overflow-y-auto p-6 bg-white dark:bg-gray-800 m-4 rounded-lg shadow-sm">
               <AICapabilities
                 capabilities={capabilities}
                 loading={capabilitiesLoading}
