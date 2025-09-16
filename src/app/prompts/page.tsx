@@ -72,7 +72,8 @@ export default function PromptsPage() {
         variables: promptData.variables || [],
         isActive: promptData.isActive ?? true,
         createdBy: 'admin_001', // 実際は認証されたユーザーのID
-        tags: promptData.tags || []
+        tags: promptData.tags || [],
+        usageCount: 0
       })
       alert('プロンプトを作成しました！')
     } catch (err) {

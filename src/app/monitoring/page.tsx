@@ -218,7 +218,7 @@ export default function MonitoringPage() {
           {tabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveView(tab.id as any)}
+              onClick={() => setActiveView(tab.id as 'overview' | 'errors' | 'sales')}
               className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
                 activeView === tab.id
                   ? 'border-primary text-primary'

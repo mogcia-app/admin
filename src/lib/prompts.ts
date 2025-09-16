@@ -256,7 +256,8 @@ export async function seedPromptData(): Promise<void> {
         ],
         isActive: true,
         createdBy: 'admin_001',
-        tags: ['サポート', '顧客対応', '問い合わせ']
+        tags: ['サポート', '顧客対応', '問い合わせ'],
+        usageCount: 0
       },
       {
         name: 'コンテンツ要約',
@@ -269,7 +270,8 @@ export async function seedPromptData(): Promise<void> {
         ],
         isActive: true,
         createdBy: 'admin_002',
-        tags: ['要約', 'コンテンツ', 'テキスト処理']
+        tags: ['要約', 'コンテンツ', 'テキスト処理'],
+        usageCount: 0
       },
       {
         name: 'マーケティングコピー生成',
@@ -285,7 +287,8 @@ export async function seedPromptData(): Promise<void> {
         ],
         isActive: true,
         createdBy: 'admin_003',
-        tags: ['マーケティング', 'コピー', '広告']
+        tags: ['マーケティング', 'コピー', '広告'],
+        usageCount: 0
       }
     ]
 

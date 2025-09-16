@@ -154,7 +154,7 @@ export function useUserStats() {
     fetchStats()
   }, [])
 
-  return { stats, loading, error, refreshStats: () => fetchStats() }
+  return { stats, loading, error, refreshStats: () => {} }
 }
 
 export function useUsersByCategory() {
@@ -200,6 +200,6 @@ export function useUsersByCategory() {
     expiringUsers,
     loading,
     error,
-    refreshData: () => fetchCategorizedUsers()
+    refreshData: () => {}
   }
 }

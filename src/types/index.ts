@@ -406,7 +406,7 @@ export interface AIMessage {
   content: string
   timestamp: string
   metadata?: {
-    dataQuery?: string
+    dataQuery?: boolean
     chartGenerated?: boolean
     actionTaken?: string
   }

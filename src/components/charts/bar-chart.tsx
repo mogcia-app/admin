@@ -93,7 +93,7 @@ export function BarChart({ data, config = {}, className }: BarChartProps) {
 
   // バー生成
   const generateBars = () => {
-    const bars: JSX.Element[] = []
+    const bars: React.JSX.Element[] = []
     
     xCategories.forEach((category, categoryIndex) => {
       data.forEach((series, seriesIndex) => {

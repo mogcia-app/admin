@@ -218,7 +218,7 @@ export function PromptModal({ isOpen, onClose, prompt, onSave }: PromptModalProp
             <CardHeader>
               <CardTitle>プロンプト内容</CardTitle>
               <CardDescription>
-                変数は {{variable_name}} の形式で記述してください
+                変数は {'{'}{'{'} variable_name {'}'}{'}'}の形式で記述してください
               </CardDescription>
             </CardHeader>
             <CardContent>

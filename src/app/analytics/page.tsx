@@ -165,7 +165,7 @@ export default function AnalyticsPage() {
           {tabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveView(tab.id as any)}
+              onClick={() => setActiveView(tab.id as 'dashboard' | 'examples')}
               className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
                 activeView === tab.id
                   ? 'border-primary text-primary'

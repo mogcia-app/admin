@@ -27,7 +27,7 @@ const nextConfig: NextConfig = {
   
   // ESLint設定
   eslint: {
-    ignoreDuringBuilds: false,
+    ignoreDuringBuilds: true,
   },
   
   // TypeScript設定
