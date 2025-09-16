@@ -254,3 +254,169 @@ export interface KPIDashboardData {
   }
   kpiTargets: KPIMetric[]
 }
+
+// お知らせ管理システム用の型定義
+export interface Notification {
+  id: string
+  title: string
+  content: string
+  type: 'info' | 'warning' | 'error' | 'success' | 'maintenance'
+  priority: 'low' | 'medium' | 'high' | 'urgent'
+  status: 'draft' | 'published' | 'archived'
+  targetAudience: 'all' | 'trial' | 'paid' | 'admin'
+  scheduledAt?: string
+  publishedAt?: string
+  expiresAt?: string
+  createdBy: string
+  createdAt: string
+  updatedAt: string
+  tags: string[]
+  isSticky: boolean
+  readCount: number
+  clickCount: number
+}
+
+export interface NotificationTemplate {
+  id: string
+  name: string
+  description: string
+  type: 'info' | 'warning' | 'error' | 'success' | 'maintenance'
+  titleTemplate: string
+  contentTemplate: string
+  variables: string[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface NotificationStats {
+  totalNotifications: number
+  publishedNotifications: number
+  draftNotifications: number
+  totalReads: number
+  totalClicks: number
+  averageReadRate: number
+  averageClickRate: number
+  notificationsByType: Record<string, number>
+  notificationsByPriority: Record<string, number>
+}
+
+// アプリアクセス制御用の型定義
+export interface AppAccessControl {
+  id: string
+  feature: string
+  isEnabled: boolean
+  description: string
+  allowedRoles: ('admin' | 'user' | 'trial')[]
+  maintenanceMode: boolean
+  maintenanceMessage?: string
+  scheduledMaintenance?: {
+    startTime: string
+    endTime: string
+    message: string
+  }
+  updatedBy: string
+  updatedAt: string
+}
+
+export interface SystemStatus {
+  id: string
+  service: string
+  status: 'operational' | 'degraded' | 'partial_outage' | 'major_outage' | 'maintenance'
+  description: string
+  lastChecked: string
+  responseTime?: number
+  uptime: number
+  incidents: SystemIncident[]
+}
+
+export interface SystemIncident {
+  id: string
+  title: string
+  description: string
+  status: 'investigating' | 'identified' | 'monitoring' | 'resolved'
+  severity: 'low' | 'medium' | 'high' | 'critical'
+  affectedServices: string[]
+  startTime: string
+  endTime?: string
+  updates: IncidentUpdate[]
+}
+
+export interface IncidentUpdate {
+  id: string
+  message: string
+  status: 'investigating' | 'identified' | 'monitoring' | 'resolved'
+  timestamp: string
+  author: string
+}
+
+// エラー監視用の型定義
+export interface ErrorLog {
+  id: string
+  message: string
+  stack?: string
+  level: 'info' | 'warn' | 'error' | 'fatal'
+  source: 'client' | 'server' | 'api' | 'database'
+  userId?: string
+  userAgent?: string
+  url?: string
+  timestamp: string
+  resolved: boolean
+  assignedTo?: string
+  tags: string[]
+  count: number
+}
+
+export interface SalesProgress {
+  id: string
+  period: string // YYYY-MM format
+  target: number
+  achieved: number
+  salesRep: string
+  deals: Deal[]
+  notes: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface Deal {
+  id: string
+  customerName: string
+  amount: number
+  stage: 'lead' | 'qualified' | 'proposal' | 'negotiation' | 'closed_won' | 'closed_lost'
+  probability: number
+  expectedCloseDate: string
+  actualCloseDate?: string
+  source: string
+  notes: string
+}
+
+// AIアシスタント用の型定義
+export interface AdminAIChat {
+  id: string
+  messages: AIMessage[]
+  title: string
+  createdAt: string
+  updatedAt: string
+  adminId: string
+}
+
+export interface AIMessage {
+  id: string
+  role: 'user' | 'assistant' | 'system'
+  content: string
+  timestamp: string
+  metadata?: {
+    dataQuery?: string
+    chartGenerated?: boolean
+    actionTaken?: string
+  }
+}
+
+export interface AICapability {
+  id: string
+  name: string
+  description: string
+  category: 'analytics' | 'management' | 'reporting' | 'automation'
+  isEnabled: boolean
+  examples: string[]
+}

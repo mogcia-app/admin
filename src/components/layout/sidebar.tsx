@@ -11,7 +11,8 @@ import {
   User,
   X,
   MessageSquare,
-  TrendingUp
+  TrendingUp,
+  Bell
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -47,6 +48,12 @@ const sidebarItems: SidebarItem[] = [
     label: 'KPIダッシュボード',
     icon: TrendingUp,
     href: '/kpi',
+  },
+  {
+    id: 'notifications',
+    label: 'お知らせ管理',
+    icon: Bell,
+    href: '/notifications',
   },
   {
     id: 'settings',
