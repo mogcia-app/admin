@@ -93,8 +93,11 @@ export function useUserStats() {
     annualUsers: 0,
     teamUsers: 0,
     soloUsers: 0,
-    totalRevenue: 0,
-    monthlyGrowth: 0
+    snsBreakdown: {},
+    industryBreakdown: {},
+    monthlyRevenue: 0,
+    churnRate: 0,
+    averageContractValue: 0
   })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -148,8 +151,11 @@ export function useUserStats() {
           annualUsers,
           teamUsers,
           soloUsers,
-          totalRevenue,
-          monthlyGrowth: Math.round(monthlyGrowth * 10) / 10
+          snsBreakdown: {},
+          industryBreakdown: {},
+          monthlyRevenue: totalRevenue,
+          churnRate: 0,
+          averageContractValue: totalRevenue / Math.max(activeUsers, 1)
         })
         setError(null)
       } catch (err) {
@@ -162,8 +168,11 @@ export function useUserStats() {
           annualUsers: 0,
           teamUsers: 0,
           soloUsers: 0,
-          totalRevenue: 0,
-          monthlyGrowth: 0
+          snsBreakdown: {},
+          industryBreakdown: {},
+          monthlyRevenue: 0,
+          churnRate: 0,
+          averageContractValue: 0
         })
       } finally {
         setLoading(false)

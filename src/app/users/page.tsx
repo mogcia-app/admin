@@ -102,6 +102,9 @@ export default function UsersPage() {
       await addUser({
         name: userData.name || '',
         email: userData.email || '',
+        role: userData.role || 'user',
+        isActive: userData.isActive !== undefined ? userData.isActive : true,
+        snsCount: userData.snsCount || 1,
         usageType: userData.usageType || 'solo',
         contractType: userData.contractType || 'trial',
         contractSNS: userData.contractSNS || [],
@@ -113,11 +116,12 @@ export default function UsersPage() {
           description: '',
           targetMarket: '',
           goals: [],
-          challenges: []
+          challenges: [],
+          currentSNSStrategy: ''
         },
         status: userData.status || 'active',
         contractStartDate: userData.contractStartDate || new Date().toISOString(),
-        contractEndDate: userData.contractEndDate || new Date().toISOString(),
+        contractEndDate: userData.contractEndDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
         billingInfo: userData.billingInfo,
         notes: userData.notes
       })
