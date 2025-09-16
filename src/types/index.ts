@@ -144,3 +144,113 @@ export interface UserStats {
   churnRate: number
   averageContractValue: number
 }
+
+// KPI管理システム用の型定義
+export interface KPIMetric {
+  id: string
+  name: string
+  description: string
+  category: 'revenue' | 'users' | 'engagement' | 'retention' | 'conversion'
+  value: number
+  target: number
+  unit: string
+  trend: 'up' | 'down' | 'neutral'
+  changePercent: number
+  period: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly'
+  updatedAt: string
+  isActive: boolean
+}
+
+export interface RevenueData {
+  id: string
+  date: string
+  amount: number
+  source: 'subscription' | 'one_time' | 'upgrade' | 'addon'
+  userId?: string
+  plan: 'trial' | 'basic' | 'professional' | 'enterprise'
+  currency: 'JPY' | 'USD'
+  createdAt: string
+}
+
+export interface UserAcquisitionData {
+  id: string
+  date: string
+  newUsers: number
+  source: 'organic' | 'paid' | 'referral' | 'social' | 'direct'
+  campaign?: string
+  cost?: number
+  conversionRate: number
+  createdAt: string
+}
+
+export interface EngagementMetrics {
+  id: string
+  userId: string
+  date: string
+  sessionsCount: number
+  totalSessionDuration: number
+  averageSessionDuration: number
+  pagesViewed: number
+  featuresUsed: string[]
+  aiInteractions: number
+  createdAt: string
+}
+
+export interface RetentionMetrics {
+  id: string
+  cohort: string // YYYY-MM format
+  period: number // weeks since signup
+  totalUsers: number
+  activeUsers: number
+  retentionRate: number
+  createdAt: string
+}
+
+export interface ConversionFunnel {
+  id: string
+  name: string
+  stages: ConversionStage[]
+  totalUsers: number
+  conversionRate: number
+  period: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ConversionStage {
+  name: string
+  users: number
+  conversionRate: number
+  dropoffRate: number
+}
+
+export interface KPIDashboardData {
+  overview: {
+    totalRevenue: number
+    monthlyRecurringRevenue: number
+    averageRevenuePerUser: number
+    customerLifetimeValue: number
+    totalUsers: number
+    activeUsers: number
+    newUsersThisMonth: number
+    churnRate: number
+  }
+  revenueMetrics: {
+    monthlyRevenue: RevenueData[]
+    revenueBySource: Record<string, number>
+    revenueByPlan: Record<string, number>
+    revenueGrowth: number
+  }
+  userMetrics: {
+    userGrowth: UserAcquisitionData[]
+    acquisitionBySource: Record<string, number>
+    userRetention: RetentionMetrics[]
+    engagementMetrics: EngagementMetrics[]
+  }
+  conversionMetrics: {
+    trialToPayingConversion: number
+    signupToTrialConversion: number
+    funnels: ConversionFunnel[]
+  }
+  kpiTargets: KPIMetric[]
+}

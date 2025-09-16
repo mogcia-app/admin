@@ -10,7 +10,8 @@ import {
   BarChart3, 
   User,
   X,
-  MessageSquare
+  MessageSquare,
+  TrendingUp
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -40,6 +41,12 @@ const sidebarItems: SidebarItem[] = [
     label: 'アナリティクス',
     icon: BarChart3,
     href: '/analytics',
+  },
+  {
+    id: 'kpi',
+    label: 'KPIダッシュボード',
+    icon: TrendingUp,
+    href: '/kpi',
   },
   {
     id: 'settings',
