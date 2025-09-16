@@ -7,8 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "export": "next build && next export",
     "firebase:emulators": "firebase emulators:start",
-    "firebase:deploy": "npm run build && firebase deploy"
+    "firebase:deploy": "npm run build && firebase deploy",
+    "vercel:deploy": "vercel --prod"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.8",
