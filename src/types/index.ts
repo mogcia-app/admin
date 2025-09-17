@@ -1,5 +1,5 @@
 export interface User {
-  id: string
+  id: string // Firebase Auth UID
   name: string
   email: string
   role: 'admin' | 'user' | 'moderator'
@@ -19,6 +19,8 @@ export interface User {
   contractEndDate: string
   billingInfo?: BillingInfo
   notes?: string
+  // パスワードは新規作成時のみ使用（Firestoreには保存しない）
+  password?: string
 }
 
 export interface AdminLayoutProps {

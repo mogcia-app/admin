@@ -3,10 +3,16 @@
 ## 🔗 Admin Panel との連携仕様
 
 ### 📊 **ユーザー管理連携**
-- **管理側**: `/users` でユーザー登録・管理
+- **管理側**: `/users` でユーザー登録・管理（メール・パスワード設定）
 - **利用者側**: 登録済みメールアドレス・パスワードでログイン
 - **UID連携**: Firebase AuthのUIDで利用者情報を紐付け
 - **データ同期**: Firestoreの`users`コレクションを共有
+
+#### **📝 ユーザー作成フロー**
+1. **Admin Panel** → 新規利用者追加
+2. **メール・パスワード入力** → Firebase Authアカウント作成
+3. **UID取得** → Firestoreに詳細情報保存
+4. **利用者側** → 同じメール・パスワードでログイン可能
 
 ### 📢 **通知システム連携**
 - **管理側**: `/notifications` でお知らせ作成・配信
@@ -41,23 +47,33 @@
 ### **Users Collection** (`users/{uid}`)
 ```typescript
 interface User {
-  id: string                    // Firebase UID
-  email: string                 // ログイン用メールアドレス
+  id: string                    // Firebase Auth UID
+  email: string                 // ログイン用メールアドレス（Firebase Auth管理）
   name: string                  // 表示名
   role: 'user' | 'admin'        // 権限（利用者は'user'）
   isActive: boolean             // アクティブ状態
   snsCount: number              // SNS契約数（1-4）
+  usageType: 'team' | 'solo'    // 利用形態
+  contractType: 'annual' | 'trial' // 契約タイプ
+  contractSNS: string[]         // 契約SNS配列
+  snsAISettings: object         // SNS AI設定
   businessInfo: {               // ビジネス情報
-    company: string
     industry: string
-    position: string
-    phone: string
-    address: string
+    companySize: string
+    businessType: string
+    description: string
+    targetMarket: string
+    goals: string[]
+    challenges: string[]
   }
+  status: 'active' | 'inactive' | 'suspended'
   contractStartDate: string     // 契約開始日
   contractEndDate: string       // 契約終了日
+  billingInfo?: object          // 課金情報
+  notes?: string                // 管理者メモ
   createdAt: string
   updatedAt: string
+  // パスワードはFirebase Authが管理（Firestoreには保存されない）
 }
 ```
 

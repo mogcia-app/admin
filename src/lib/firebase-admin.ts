@@ -1,6 +1,7 @@
 // Firebase Admin SDK for server-side operations
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, orderBy } from 'firebase/firestore'
-import { db } from './firebase'
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, orderBy, setDoc } from 'firebase/firestore'
+import { createUserWithEmailAndPassword, deleteUser as deleteAuthUser } from 'firebase/auth'
+import { db, auth } from './firebase'
 import { User } from '@/types'
 
 // User management functions
@@ -39,13 +40,30 @@ export const userService = {
     }
   },
 
-  // Create new user
+  // Create new user with Firebase Auth
   async createUser(userData: Omit<User, 'id' | 'createdAt' | 'updatedAt'>) {
     try {
-      const usersRef = collection(db, 'users')
-      const docRef = await addDoc(usersRef, {
-        ...userData,
-        snsCount: userData.snsCount || 1, // デフォルトは1SNS
+      // 1. Firebase Authでユーザーアカウント作成
+      if (!userData.email || !userData.password) {
+        throw new Error('メールアドレスとパスワードは必須です')
+      }
+
+      const userCredential = await createUserWithEmailAndPassword(
+        auth, 
+        userData.email, 
+        userData.password
+      )
+      
+      const uid = userCredential.user.uid
+      
+      // 2. Firestoreにユーザー詳細情報を保存（パスワードは除く）
+      const { password, ...userDataWithoutPassword } = userData
+      const userRef = doc(db, 'users', uid)
+      
+      await setDoc(userRef, {
+        id: uid, // Firebase Auth UIDを使用
+        ...userDataWithoutPassword,
+        snsCount: userData.snsCount || 1,
         usageType: userData.usageType || 'solo',
         contractType: userData.contractType || 'trial',
         contractSNS: userData.contractSNS || [],
@@ -62,14 +80,26 @@ export const userService = {
         },
         status: userData.status || 'active',
         contractStartDate: userData.contractStartDate || new Date().toISOString(),
-        contractEndDate: userData.contractEndDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30日後
+        contractEndDate: userData.contractEndDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       })
       
-      return docRef.id
+      return uid
     } catch (error) {
       console.error('Error creating user:', error)
+      if (error instanceof Error) {
+        // Firebase Authエラーメッセージを日本語化
+        if (error.message.includes('email-already-in-use')) {
+          throw new Error('このメールアドレスは既に使用されています')
+        }
+        if (error.message.includes('weak-password')) {
+          throw new Error('パスワードが弱すぎます。8文字以上で設定してください')
+        }
+        if (error.message.includes('invalid-email')) {
+          throw new Error('無効なメールアドレスです')
+        }
+      }
       throw error
     }
   },
@@ -88,11 +118,17 @@ export const userService = {
     }
   },
 
-  // Delete user
+  // Delete user (both Firebase Auth and Firestore)
   async deleteUser(userId: string) {
     try {
+      // 1. Firestoreからユーザー削除
       const userRef = doc(db, 'users', userId)
       await deleteDoc(userRef)
+      
+      // 2. Firebase Authからユーザー削除は管理者権限が必要
+      // 現在のクライアントSDKでは他のユーザーを削除できないため、
+      // 実際の運用では Firebase Admin SDK を使用する必要があります
+      console.log(`User ${userId} deleted from Firestore. Firebase Auth deletion requires Admin SDK.`)
     } catch (error) {
       console.error('Error deleting user:', error)
       throw error

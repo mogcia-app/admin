@@ -250,6 +250,12 @@ export function UserModal({ isOpen, onClose, user, onSave }: UserModalProps) {
       return
     }
 
+    // 新規作成時はパスワードも必須
+    if (!user && (!formData.password || formData.password.length < 8)) {
+      alert('初期パスワードは8文字以上で入力してください。')
+      return
+    }
+
     onSave({
       ...formData,
       updatedAt: new Date().toISOString()
@@ -299,6 +305,29 @@ export function UserModal({ isOpen, onClose, user, onSave }: UserModalProps) {
                   />
                 </div>
               </div>
+
+              {/* パスワード設定（新規作成時のみ） */}
+              {!user && (
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    初期パスワード *
+                    <span className="text-xs text-muted-foreground ml-2">
+                      （利用者がログインで使用するパスワード）
+                    </span>
+                  </label>
+                  <input
+                    type="password"
+                    value={formData.password || ''}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                    placeholder="8文字以上のパスワードを入力"
+                    minLength={8}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    このパスワードで利用者側アプリにログインできます。利用者は後で変更可能です。
+                  </p>
+                </div>
+              )}
 
               <div className="grid grid-cols-4 gap-4">
                 <div>
