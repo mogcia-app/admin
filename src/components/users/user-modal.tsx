@@ -39,6 +39,7 @@ export function UserModal({ isOpen, onClose, user, onSave }: UserModalProps) {
   const [formData, setFormData] = useState<Partial<User>>({
     name: '',
     email: '',
+    password: '', // 新規作成時のパスワード
     usageType: 'solo',
     contractType: 'trial',
     contractSNS: [],
@@ -93,6 +94,7 @@ export function UserModal({ isOpen, onClose, user, onSave }: UserModalProps) {
       setFormData({
         name: '',
         email: '',
+        password: '', // 新規作成時のパスワード
         usageType: 'solo',
         contractType: 'trial',
         contractSNS: [],
@@ -255,6 +257,12 @@ export function UserModal({ isOpen, onClose, user, onSave }: UserModalProps) {
       alert('初期パスワードは8文字以上で入力してください。')
       return
     }
+
+    // デバッグ用：送信データを確認
+    console.log('Saving user data:', {
+      ...formData,
+      password: formData.password ? '[SET]' : '[NOT SET]' // パスワードは表示しない
+    })
 
     onSave({
       ...formData,
