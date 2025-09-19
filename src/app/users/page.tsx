@@ -99,9 +99,16 @@ export default function UsersPage() {
 
   const handleCreateUser = async (userData: Partial<User>) => {
     try {
+      // デバッグ用：受け取ったデータを確認
+      console.log('handleCreateUser received data:', {
+        ...userData,
+        password: userData.password ? `[${userData.password.length} chars]` : '[NOT SET]'
+      })
+
       await addUser({
         name: userData.name || '',
         email: userData.email || '',
+        password: userData.password || '', // パスワードを明示的に渡す
         role: userData.role || 'user',
         isActive: userData.isActive !== undefined ? userData.isActive : true,
         snsCount: userData.snsCount || 1,
@@ -127,6 +134,7 @@ export default function UsersPage() {
       })
       alert('利用者を作成しました！')
     } catch (err) {
+      console.error('Error in handleCreateUser:', err)
       alert('利用者の作成に失敗しました: ' + (err instanceof Error ? err.message : '不明なエラー'))
     }
   }

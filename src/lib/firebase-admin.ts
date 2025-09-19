@@ -43,8 +43,18 @@ export const userService = {
   // Create new user with Firebase Auth
   async createUser(userData: Omit<User, 'id' | 'createdAt' | 'updatedAt'>) {
     try {
+      // デバッグ用：受け取ったデータを確認
+      console.log('firebase-admin createUser - received data:', {
+        ...userData,
+        password: userData.password ? `[${userData.password.length} chars]` : '[NOT SET]'
+      })
+      
       // 1. Firebase Authでユーザーアカウント作成
       if (!userData.email || !userData.password) {
+        console.error('Missing email or password:', { 
+          email: !!userData.email, 
+          password: !!userData.password 
+        })
         throw new Error('メールアドレスとパスワードは必須です')
       }
 

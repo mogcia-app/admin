@@ -261,8 +261,15 @@ export function UserModal({ isOpen, onClose, user, onSave }: UserModalProps) {
     // デバッグ用：送信データを確認
     console.log('Saving user data:', {
       ...formData,
-      password: formData.password ? '[SET]' : '[NOT SET]' // パスワードは表示しない
+      password: formData.password ? `[${formData.password.length} chars]` : '[NOT SET]' // パスワード長のみ表示
     })
+
+    // パスワードが設定されていることを確認
+    if (!user && !formData.password) {
+      console.error('Password is missing for new user creation')
+      alert('パスワードが設定されていません。')
+      return
+    }
 
     onSave({
       ...formData,

@@ -31,6 +31,13 @@ export function useUsers() {
   const addUser = async (userData: Omit<User, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
       setError(null)
+      
+      // デバッグ用：userServiceに渡すデータを確認
+      console.log('useUsers addUser - calling userService.createUser with:', {
+        ...userData,
+        password: userData.password ? `[${userData.password.length} chars]` : '[NOT SET]'
+      })
+      
       const id = await userService.createUser(userData)
       const newUser: User = {
         ...userData,
@@ -41,6 +48,7 @@ export function useUsers() {
       setUsers(prev => [newUser, ...prev])
       return id
     } catch (err) {
+      console.error('Error in useUsers addUser:', err)
       const errorMessage = err instanceof Error ? err.message : 'ユーザーの作成に失敗しました'
       setError(errorMessage)
       throw new Error(errorMessage)
