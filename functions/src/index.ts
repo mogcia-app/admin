@@ -1,8 +1,10 @@
 import * as functions from 'firebase-functions'
 import * as admin from 'firebase-admin'
+import cors from 'cors'
 
 // Firebase Admin SDKの初期化
 admin.initializeApp()
+const corsHandler = cors({ origin: true })
 
 // ユーザー管理関数
 export const getUsers = functions.https.onRequest(async (req, res) => {
@@ -142,59 +144,46 @@ export const getDashboardData = functions.https.onRequest(async (req, res) => {
 // =============================================================================
 
 // プロンプト一覧取得
-export const getPrompts = functions.https.onRequest(async (req, res) => {
-  try {
-    // CORSヘッダーの設定
-    res.set('Access-Control-Allow-Origin', '*')
-    res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE')
-    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+export const getPrompts = functions.https.onRequest((req, res) => {
+  corsHandler(req, res, async () => {
+    try {
+      // クエリパラメータの取得
+      const category = req.query.category as string
+      const search = req.query.search as string
+      const isActive = req.query.isActive as string
 
-    if (req.method === 'OPTIONS') {
-      res.status(204).send('')
-      return
+      let queryRef: any = admin.firestore().collection('promptTemplates')
+
+      // フィルター適用
+      if (category && category !== 'all') {
+        queryRef = queryRef.where('category', '==', category)
+      }
+      if (isActive !== undefined) {
+        queryRef = queryRef.where('isActive', '==', isActive === 'true')
+      }
+
+      const snapshot = await queryRef.orderBy('createdAt', 'desc').get()
+      let prompts = snapshot.docs.map((doc: any) => ({
+        id: doc.id,
+        ...doc.data()
+      }))
+
+      // 検索フィルター（クライアントサイド）
+      if (search) {
+        const searchLower = search.toLowerCase()
+        prompts = prompts.filter((prompt: any) => 
+          prompt.name?.toLowerCase().includes(searchLower) ||
+          prompt.description?.toLowerCase().includes(searchLower) ||
+          prompt.tags?.some((tag: string) => tag.toLowerCase().includes(searchLower))
+        )
+      }
+
+      res.status(200).json({ prompts })
+    } catch (error) {
+      console.error('Error getting prompts:', error)
+      res.status(500).json({ error: 'Internal server error' })
     }
-
-    if (req.method !== 'GET') {
-      res.status(405).json({ error: 'Method not allowed' })
-      return
-    }
-
-    // クエリパラメータの取得
-    const category = req.query.category as string
-    const search = req.query.search as string
-    const isActive = req.query.isActive as string
-
-    let queryRef: any = admin.firestore().collection('promptTemplates')
-
-    // フィルター適用
-    if (category && category !== 'all') {
-      queryRef = queryRef.where('category', '==', category)
-    }
-    if (isActive !== undefined) {
-      queryRef = queryRef.where('isActive', '==', isActive === 'true')
-    }
-
-    const snapshot = await queryRef.orderBy('createdAt', 'desc').get()
-    let prompts = snapshot.docs.map((doc: any) => ({
-      id: doc.id,
-      ...doc.data()
-    }))
-
-    // 検索フィルター（クライアントサイド）
-    if (search) {
-      const searchLower = search.toLowerCase()
-      prompts = prompts.filter((prompt: any) => 
-        prompt.name?.toLowerCase().includes(searchLower) ||
-        prompt.description?.toLowerCase().includes(searchLower) ||
-        prompt.tags?.some((tag: string) => tag.toLowerCase().includes(searchLower))
-      )
-    }
-
-    res.status(200).json({ prompts })
-  } catch (error) {
-    console.error('Error getting prompts:', error)
-    res.status(500).json({ error: 'Internal server error' })
-  }
+  })
 })
 
 // プロンプト作成
