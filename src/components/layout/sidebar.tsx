@@ -52,6 +52,12 @@ const sidebarItems: SidebarItem[] = [
     href: '/notifications',
   },
   {
+    id: 'guides',
+    label: 'ガイド管理',
+    icon: Shield, // 必要に応じてアイコン変更可
+    href: '/guides',
+  },
+  {
     id: 'access-control',
     label: 'アクセス制御',
     icon: Shield,
