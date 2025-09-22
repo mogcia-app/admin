@@ -1,9 +1,10 @@
+"use client";
 import React from "react";
-import { useRouter } from "next/router";
+import { useRouter } from "next/navigation";
 
-export default function GuideDeletePage() {
+export default function GuideDeletePage({ params }: { params: { guideId: string } }) {
   const router = useRouter();
-  const { guideId } = router.query;
+  const guideId = params.guideId;
 
   const handleDelete = async () => {
     if (window.confirm("本当に削除しますか？")) {
