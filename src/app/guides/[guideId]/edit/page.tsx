@@ -2,9 +2,9 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-export default function GuideEditPage({ params }: { params: { guideId: string } }) {
+export default function GuideEditPage(props: any) {
   const router = useRouter();
-  const guideId = params.guideId;
+  const guideId = props?.params?.guideId ?? "";
   const [guide, setGuide] = useState<any>(null);
   const [title, setTitle] = useState("");
   const [thumbnail, setThumbnail] = useState("");
