@@ -17,9 +17,17 @@ interface UserModalProps {
 const snsOptions = [
   { value: 'instagram', label: 'Instagram' },
   { value: 'x', label: 'X (Twitter)' },
-  { value: 'youtube', label: 'YouTube' },
+  // { value: 'youtube', label: 'YouTube' }, // 将来的に必要になる可能性あり
   { value: 'tiktok', label: 'TikTok' }
 ]
+
+// SNS数別の月額料金
+const snsPricing: Record<number, number> = {
+  1: 60000,
+  2: 80000,
+  3: 100000,
+  // 4: 120000 // 将来的に必要になる可能性あり
+}
 
 const industryOptions = [
   '美容・コスメ',
@@ -50,10 +58,13 @@ export function UserModal({ isOpen, onClose, user, onSave }: UserModalProps) {
       companySize: 'individual',
       businessType: 'b2c',
       description: '',
-      targetMarket: '',
-      goals: [],
-      challenges: [],
-      currentSNSStrategy: ''
+      snsMainGoals: [],
+      brandMission: '',
+      targetCustomer: '',
+      uniqueValue: '',
+      brandVoice: '',
+      kpiTargets: [],
+      challenges: []
     },
     status: 'active',
     contractStartDate: new Date().toISOString().split('T')[0] + 'T00:00:00Z',
@@ -69,9 +80,10 @@ export function UserModal({ isOpen, onClose, user, onSave }: UserModalProps) {
     notes: ''
   })
 
-  const [newGoal, setNewGoal] = useState('')
+  const [newSNSMainGoal, setNewSNSMainGoal] = useState('')
+  const [newKPITarget, setNewKPITarget] = useState('')
   const [newChallenge, setNewChallenge] = useState('')
-  const [newKeyword, setNewKeyword] = useState('')
+  const [newFocusMetric, setNewFocusMetric] = useState('')
 
   // ユーザー編集時の初期化
   useEffect(() => {
@@ -104,10 +116,13 @@ export function UserModal({ isOpen, onClose, user, onSave }: UserModalProps) {
           companySize: 'individual',
           businessType: 'b2c',
           description: '',
-          targetMarket: '',
-          goals: [],
-          challenges: [],
-          currentSNSStrategy: ''
+          snsMainGoals: [],
+          brandMission: '',
+          targetCustomer: '',
+          uniqueValue: '',
+          brandVoice: '',
+          kpiTargets: [],
+          challenges: []
         },
         status: 'active',
         contractStartDate: now.toISOString(),
@@ -157,9 +172,29 @@ export function UserModal({ isOpen, onClose, user, onSave }: UserModalProps) {
     }
   }, [formData.contractType, formData.contractStartDate])
 
+  // SNS契約数に応じて月額料金を自動更新
+  useEffect(() => {
+    const snsCount = formData.snsCount || 1
+    const monthlyFee = snsPricing[snsCount] || 60000
+    
+    setFormData(prev => ({
+      ...prev,
+      billingInfo: {
+        ...prev.billingInfo!,
+        monthlyFee
+      }
+    }))
+  }, [formData.snsCount])
+
   if (!isOpen) return null
 
   const handleSNSChange = (sns: string, checked: boolean) => {
+    // SNS選択数の制限（最大3つまで）
+    if (checked && (formData.contractSNS || []).length >= 3) {
+      alert('SNSは最大3つまで選択できます')
+      return
+    }
+
     const updatedSNS = checked 
       ? [...(formData.contractSNS || []), sns]
       : (formData.contractSNS || []).filter(s => s !== sns)
@@ -169,14 +204,14 @@ export function UserModal({ isOpen, onClose, user, onSave }: UserModalProps) {
     if (checked) {
       updatedSettings[sns as keyof SNSAISettings] = {
         enabled: true,
-        tone: 'friendly',
-        language: 'japanese',
-        postFrequency: 'medium',
-        targetAudience: '',
-        brandVoice: '',
-        keywords: [],
-        autoPost: false,
-        contentTypes: ['text']
+        whyThisSNS: '',
+        snsGoal: '',
+        contentDirection: '',
+        postFrequency: '',
+        targetAction: '',
+        tone: '',
+        focusMetrics: [],
+        strategyNotes: ''
       }
     } else {
       delete updatedSettings[sns as keyof SNSAISettings]
@@ -202,24 +237,46 @@ export function UserModal({ isOpen, onClose, user, onSave }: UserModalProps) {
     })
   }
 
-  const handleAddGoal = () => {
-    if (!newGoal.trim()) return
+  const handleAddSNSMainGoal = () => {
+    if (!newSNSMainGoal.trim()) return
     setFormData({
       ...formData,
       businessInfo: {
         ...formData.businessInfo!,
-        goals: [...(formData.businessInfo?.goals || []), newGoal.trim()]
+        snsMainGoals: [...(formData.businessInfo?.snsMainGoals || []), newSNSMainGoal.trim()]
       }
     })
-    setNewGoal('')
+    setNewSNSMainGoal('')
   }
 
-  const handleRemoveGoal = (index: number) => {
+  const handleRemoveSNSMainGoal = (index: number) => {
     setFormData({
       ...formData,
       businessInfo: {
         ...formData.businessInfo!,
-        goals: formData.businessInfo!.goals.filter((_, i) => i !== index)
+        snsMainGoals: formData.businessInfo!.snsMainGoals.filter((_, i) => i !== index)
+      }
+    })
+  }
+
+  const handleAddKPITarget = () => {
+    if (!newKPITarget.trim()) return
+    setFormData({
+      ...formData,
+      businessInfo: {
+        ...formData.businessInfo!,
+        kpiTargets: [...(formData.businessInfo?.kpiTargets || []), newKPITarget.trim()]
+      }
+    })
+    setNewKPITarget('')
+  }
+
+  const handleRemoveKPITarget = (index: number) => {
+    setFormData({
+      ...formData,
+      businessInfo: {
+        ...formData.businessInfo!,
+        kpiTargets: formData.businessInfo!.kpiTargets.filter((_, i) => i !== index)
       }
     })
   }
@@ -243,6 +300,43 @@ export function UserModal({ isOpen, onClose, user, onSave }: UserModalProps) {
         ...formData.businessInfo!,
         challenges: formData.businessInfo!.challenges.filter((_, i) => i !== index)
       }
+    })
+  }
+
+  const handleAddFocusMetric = (sns: string) => {
+    if (!newFocusMetric.trim()) return
+    
+    const updatedSettings = { ...formData.snsAISettings }
+    const currentSetting = updatedSettings[sns as keyof SNSAISettings]
+    
+    if (currentSetting) {
+      updatedSettings[sns as keyof SNSAISettings] = {
+        ...currentSetting,
+        focusMetrics: [...(currentSetting.focusMetrics || []), newFocusMetric.trim()]
+      }
+    }
+    
+    setFormData({
+      ...formData,
+      snsAISettings: updatedSettings
+    })
+    setNewFocusMetric('')
+  }
+
+  const handleRemoveFocusMetric = (sns: string, index: number) => {
+    const updatedSettings = { ...formData.snsAISettings }
+    const currentSetting = updatedSettings[sns as keyof SNSAISettings]
+    
+    if (currentSetting) {
+      updatedSettings[sns as keyof SNSAISettings] = {
+        ...currentSetting,
+        focusMetrics: currentSetting.focusMetrics.filter((_, i) => i !== index)
+      }
+    }
+    
+    setFormData({
+      ...formData,
+      snsAISettings: updatedSettings
     })
   }
 
@@ -379,7 +473,7 @@ export function UserModal({ isOpen, onClose, user, onSave }: UserModalProps) {
                     <option value={1}>1SNS (60,000円)</option>
                     <option value={2}>2SNS (80,000円)</option>
                     <option value={3}>3SNS (100,000円)</option>
-                    <option value={4}>4SNS (120,000円)</option>
+                    {/* <option value={4}>4SNS (120,000円)</option> */} {/* 将来的に必要になる可能性あり */}
                   </select>
                 </div>
 
@@ -403,7 +497,7 @@ export function UserModal({ isOpen, onClose, user, onSave }: UserModalProps) {
           <Card>
             <CardHeader>
               <CardTitle>契約SNS</CardTitle>
-              <CardDescription>利用するSNSプラットフォームを選択してください</CardDescription>
+              <CardDescription>利用するSNSプラットフォームを選択してください（最大3つまで）</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-4">
@@ -426,8 +520,10 @@ export function UserModal({ isOpen, onClose, user, onSave }: UserModalProps) {
           {formData.contractSNS && formData.contractSNS.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle>SNS AI設定</CardTitle>
-                <CardDescription>各SNSプラットフォームのAI設定を行います</CardDescription>
+                <CardTitle>各SNS AI設定</CardTitle>
+                <CardDescription>
+                  なぜそのSNSを選んだのか？そのSNSで何を達成するのか？を明確にしてください
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 {formData.contractSNS.map((sns) => {
@@ -435,86 +531,146 @@ export function UserModal({ isOpen, onClose, user, onSave }: UserModalProps) {
                   if (!setting) return null
 
                   return (
-                    <div key={sns} className="border rounded-lg p-4 space-y-4">
-                      <h4 className="font-medium text-lg">{snsOptions.find(s => s.value === sns)?.label}</h4>
+                    <div key={sns} className="border-2 border-gray-200 rounded-lg p-4 space-y-4 bg-white">
+                      <h4 className="font-medium text-lg flex items-center gap-2">
+                        🎯 {snsOptions.find(s => s.value === sns)?.label}
+                      </h4>
                       
-                      <div className="grid grid-cols-3 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium mb-2">トーン</label>
-                          <select
-                            value={setting.tone}
-                            onChange={(e) => handleSNSSettingChange(sns, 'tone', e.target.value)}
-                            className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-                          >
-                            <option value="casual">カジュアル</option>
-                            <option value="professional">プロフェッショナル</option>
-                            <option value="friendly">親しみやすい</option>
-                            <option value="energetic">エネルギッシュ</option>
-                          </select>
-                        </div>
+                      {/* Why THIS SNS? */}
+                      <div className="border-l-4 border-yellow-500 pl-3 py-2">
+                        <label className="block text-sm font-medium mb-2">
+                          ❓ なぜこのSNSを選んだのか？
+                        </label>
+                        <textarea
+                          value={setting.whyThisSNS}
+                          onChange={(e) => handleSNSSettingChange(sns, 'whyThisSNS', e.target.value)}
+                          className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                          rows={2}
+                          placeholder={
+                            sns === 'instagram' ? '例: 高級感・ビジュアルでブランド価値を伝えやすい' :
+                            sns === 'x' ? '例: リアルタイムな対話とコミュニティ形成に最適' :
+                            sns === 'tiktok' ? '例: 若年層へのリーチと動画コンテンツの拡散力' :
+                            'このSNSを選んだ理由を入力'
+                          }
+                        />
+                      </div>
 
-                        <div>
-                          <label className="block text-sm font-medium mb-2">言語</label>
-                          <select
-                            value={setting.language}
-                            onChange={(e) => handleSNSSettingChange(sns, 'language', e.target.value)}
-                            className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-                          >
-                            <option value="japanese">日本語</option>
-                            <option value="english">英語</option>
-                            <option value="mixed">日英混合</option>
-                          </select>
-                        </div>
+                      {/* このSNSでの目標 */}
+                      <div>
+                        <label className="block text-sm font-medium mb-2">このSNSでの目標・期待する成果</label>
+                        <textarea
+                          value={setting.snsGoal}
+                          onChange={(e) => handleSNSSettingChange(sns, 'snsGoal', e.target.value)}
+                          className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                          rows={2}
+                          placeholder={
+                            sns === 'instagram' ? '例: フォロワー1万人達成、プロフィールからEC誘導月100件' :
+                            sns === 'x' ? '例: エンゲージメント率5%以上、コミュニティ形成' :
+                            sns === 'tiktok' ? '例: バズ動画で月間100万再生、若年層認知拡大' :
+                            'このSNSで達成したいことを入力'
+                          }
+                        />
+                      </div>
 
-                        <div>
-                          <label className="block text-sm font-medium mb-2">投稿頻度</label>
-                          <select
-                            value={setting.postFrequency}
-                            onChange={(e) => handleSNSSettingChange(sns, 'postFrequency', e.target.value)}
-                            className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-                          >
-                            <option value="low">低頻度</option>
-                            <option value="medium">中頻度</option>
-                            <option value="high">高頻度</option>
-                          </select>
-                        </div>
+                      {/* コンテンツの方向性 */}
+                      <div>
+                        <label className="block text-sm font-medium mb-2">コンテンツの方向性</label>
+                        <textarea
+                          value={setting.contentDirection}
+                          onChange={(e) => handleSNSSettingChange(sns, 'contentDirection', e.target.value)}
+                          className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                          rows={3}
+                          placeholder={
+                            sns === 'instagram' ? '例: フィード（商品写真、店舗の雰囲気）、リール（淹れ方動画）、ストーリーズ（日常）' :
+                            sns === 'x' ? '例: 新商品告知、お客様の声紹介、業界トレンド解説' :
+                            sns === 'tiktok' ? '例: 15-30秒の短尺動画、トレンド音源活用、チャレンジ参加' :
+                            'どんなコンテンツを投稿するか'
+                          }
+                        />
                       </div>
 
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium mb-2">ターゲット層</label>
+                          <label className="block text-sm font-medium mb-2">投稿頻度の目安</label>
                           <input
                             type="text"
-                            value={setting.targetAudience}
-                            onChange={(e) => handleSNSSettingChange(sns, 'targetAudience', e.target.value)}
+                            value={setting.postFrequency}
+                            onChange={(e) => handleSNSSettingChange(sns, 'postFrequency', e.target.value)}
                             className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-                            placeholder="例: 20-30代女性"
+                            placeholder="例: 週3投稿、毎日ストーリーズ"
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium mb-2">ブランドボイス</label>
+                          <label className="block text-sm font-medium mb-2">ターゲットとするアクション</label>
                           <input
                             type="text"
-                            value={setting.brandVoice}
-                            onChange={(e) => handleSNSSettingChange(sns, 'brandVoice', e.target.value)}
+                            value={setting.targetAction}
+                            onChange={(e) => handleSNSSettingChange(sns, 'targetAction', e.target.value)}
                             className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-                            placeholder="例: 親しみやすく信頼感のある"
+                            placeholder="例: プロフィールからEC誘導"
                           />
                         </div>
                       </div>
 
-                      <div className="flex items-center space-x-2">
+                      <div>
+                        <label className="block text-sm font-medium mb-2">トーン＆マナー</label>
                         <input
-                          type="checkbox"
-                          id={`autoPost-${sns}`}
-                          checked={setting.autoPost}
-                          onChange={(e) => handleSNSSettingChange(sns, 'autoPost', e.target.checked)}
-                          className="rounded border-border"
+                          type="text"
+                          value={setting.tone}
+                          onChange={(e) => handleSNSSettingChange(sns, 'tone', e.target.value)}
+                          className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                          placeholder="例: 温かみがあり、専門性を感じさせる"
                         />
-                        <label htmlFor={`autoPost-${sns}`} className="text-sm font-medium">
-                          自動投稿を有効にする
-                        </label>
+                      </div>
+
+                      {/* 重視する指標 */}
+                      <div>
+                        <label className="block text-sm font-medium mb-2">重視する指標</label>
+                        <p className="text-xs text-muted-foreground mb-2">
+                          例: 「保存数」「シェア数」「エンゲージメント率」「プロフィールクリック数」
+                        </p>
+                        {setting.focusMetrics && setting.focusMetrics.length > 0 && (
+                          <div className="flex flex-wrap gap-2 mb-3">
+                            {setting.focusMetrics.map((metric, index) => (
+                              <div key={index} className="flex items-center gap-1 px-2 py-1 bg-white rounded border">
+                                <span className="text-sm">{metric}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveFocusMetric(sns, index)}
+                                  className="text-red-500 hover:text-red-700"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={newFocusMetric}
+                            onChange={(e) => setNewFocusMetric(e.target.value)}
+                            onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddFocusMetric(sns))}
+                            className="flex-1 px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                            placeholder="重視する指標を入力"
+                          />
+                          <Button type="button" onClick={() => handleAddFocusMetric(sns)} size="sm">
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* その他の戦略メモ */}
+                      <div>
+                        <label className="block text-sm font-medium mb-2">その他の戦略メモ（任意）</label>
+                        <textarea
+                          value={setting.strategyNotes || ''}
+                          onChange={(e) => handleSNSSettingChange(sns, 'strategyNotes', e.target.value)}
+                          className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                          rows={2}
+                          placeholder="その他、AIに伝えたい戦略や注意点"
+                        />
                       </div>
                     </div>
                   )
@@ -527,6 +683,9 @@ export function UserModal({ isOpen, onClose, user, onSave }: UserModalProps) {
           <Card>
             <CardHeader>
               <CardTitle>事業情報</CardTitle>
+              <CardDescription>
+                SNSを使って何を達成したいのか？事業の核となる情報を入力してください
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-3 gap-4">
@@ -595,32 +754,23 @@ export function UserModal({ isOpen, onClose, user, onSave }: UserModalProps) {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium mb-2">ターゲット市場</label>
-                <input
-                  type="text"
-                  value={formData.businessInfo?.targetMarket || ''}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    businessInfo: { ...formData.businessInfo!, targetMarket: e.target.value }
-                  })}
-                  className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="例: 20-40代の美容意識の高い女性"
-                />
-              </div>
-
-              {/* 目標 */}
-              <div>
-                <label className="block text-sm font-medium mb-2">目標</label>
-                {formData.businessInfo?.goals && formData.businessInfo.goals.length > 0 && (
+              {/* SNS活用の大目標 */}
+              <div className="border-l-4 border-primary pl-4 p-4 rounded bg-white">
+                <label className="block text-sm font-medium mb-2 text-primary">
+                  💡 SNS活用の大目標（Why SNS?）
+                </label>
+                <p className="text-xs text-muted-foreground mb-3">
+                  例: 「認知拡大で月間新規顧客100人獲得」「EC売上30%UP」「ブランド世界観の確立」
+                </p>
+                {formData.businessInfo?.snsMainGoals && formData.businessInfo.snsMainGoals.length > 0 && (
                   <div className="space-y-2 mb-3">
-                    {formData.businessInfo.goals.map((goal, index) => (
-                      <div key={index} className="flex items-center gap-2 p-2 bg-muted rounded">
+                    {formData.businessInfo.snsMainGoals.map((goal, index) => (
+                      <div key={index} className="flex items-center gap-2 p-2 bg-white rounded">
                         <span className="flex-1">{goal}</span>
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleRemoveGoal(index)}
+                          onClick={() => handleRemoveSNSMainGoal(index)}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -631,13 +781,109 @@ export function UserModal({ isOpen, onClose, user, onSave }: UserModalProps) {
                 <div className="flex gap-2">
                   <input
                     type="text"
-                    value={newGoal}
-                    onChange={(e) => setNewGoal(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleAddGoal()}
+                    value={newSNSMainGoal}
+                    onChange={(e) => setNewSNSMainGoal(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleAddSNSMainGoal()}
                     className="flex-1 px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-                    placeholder="目標を入力"
+                    placeholder="SNS活用の大目標を入力"
                   />
-                  <Button onClick={handleAddGoal} size="sm">
+                  <Button onClick={handleAddSNSMainGoal} size="sm">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* ブランドの核 */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">ブランドミッション・理念</label>
+                  <textarea
+                    value={formData.businessInfo?.brandMission || ''}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      businessInfo: { ...formData.businessInfo!, brandMission: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                    rows={2}
+                    placeholder="例: 毎日のコーヒーを特別な体験に"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">ターゲット顧客</label>
+                  <textarea
+                    value={formData.businessInfo?.targetCustomer || ''}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      businessInfo: { ...formData.businessInfo!, targetCustomer: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                    rows={2}
+                    placeholder="例: 30-40代、コーヒーにこだわりたい層"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">独自の価値・差別化ポイント</label>
+                  <textarea
+                    value={formData.businessInfo?.uniqueValue || ''}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      businessInfo: { ...formData.businessInfo!, uniqueValue: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                    rows={2}
+                    placeholder="例: 産地直送の高品質豆、丁寧な焙煎"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">ブランドボイス・トーン</label>
+                  <textarea
+                    value={formData.businessInfo?.brandVoice || ''}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      businessInfo: { ...formData.businessInfo!, brandVoice: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                    rows={2}
+                    placeholder="例: 温かみがあり、専門性を感じさせる"
+                  />
+                </div>
+              </div>
+
+              {/* 測定したいKPI */}
+              <div>
+                <label className="block text-sm font-medium mb-2">測定したいKPI</label>
+                <p className="text-xs text-muted-foreground mb-2">
+                  例: 「月間新規顧客100人」「リピート率50%」「地域No.1の認知度」
+                </p>
+                {formData.businessInfo?.kpiTargets && formData.businessInfo.kpiTargets.length > 0 && (
+                  <div className="space-y-2 mb-3">
+                    {formData.businessInfo.kpiTargets.map((kpi, index) => (
+                      <div key={index} className="flex items-center gap-2 p-2 bg-muted rounded">
+                        <span className="flex-1">{kpi}</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveKPITarget(index)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newKPITarget}
+                    onChange={(e) => setNewKPITarget(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleAddKPITarget()}
+                    className="flex-1 px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                    placeholder="KPI目標を入力"
+                  />
+                  <Button onClick={handleAddKPITarget} size="sm">
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
@@ -710,15 +956,20 @@ export function UserModal({ isOpen, onClose, user, onSave }: UserModalProps) {
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-2">月額料金</label>
-                  <input
-                    type="number"
-                    value={formData.billingInfo?.monthlyFee || 0}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      billingInfo: { ...formData.billingInfo!, monthlyFee: parseInt(e.target.value) || 0 }
-                    })}
-                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={`¥${(formData.billingInfo?.monthlyFee || 0).toLocaleString()}`}
+                      readOnly
+                      className="w-full px-3 py-2 border border-border rounded-md bg-gray-50 text-gray-700 cursor-not-allowed"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                      自動計算
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    SNS契約数に応じて自動設定されます
+                  </p>
                 </div>
 
                 <div>

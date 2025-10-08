@@ -12,14 +12,14 @@ import { useUsers, useUserStats } from '@/hooks/useUsers'
 const snsIcons = {
   instagram: '📷',
   x: '🐦',
-  youtube: '📺',
+  // youtube: '📺', // 将来的に必要になる可能性あり
   tiktok: '🎵'
 }
 
 const snsLabels = {
   instagram: 'Instagram',
   x: 'X (Twitter)',
-  youtube: 'YouTube',
+  // youtube: 'YouTube', // 将来的に必要になる可能性あり
   tiktok: 'TikTok'
 }
 
@@ -121,10 +121,13 @@ export default function UsersPage() {
           companySize: 'individual',
           businessType: 'b2c',
           description: '',
-          targetMarket: '',
-          goals: [],
-          challenges: [],
-          currentSNSStrategy: ''
+          snsMainGoals: [],
+          brandMission: '',
+          targetCustomer: '',
+          uniqueValue: '',
+          brandVoice: '',
+          kpiTargets: [],
+          challenges: []
         },
         status: userData.status || 'active',
         contractStartDate: userData.contractStartDate || new Date().toISOString(),
@@ -483,7 +486,12 @@ export default function UsersPage() {
                 <div className="space-y-2 text-sm">
                   <p><span className="font-medium">業界:</span> {selectedUser.businessInfo.industry}</p>
                   <p><span className="font-medium">事業内容:</span> {selectedUser.businessInfo.description}</p>
-                  <p><span className="font-medium">目標:</span> {selectedUser.businessInfo.goals.join(', ')}</p>
+                  {selectedUser.businessInfo.snsMainGoals && selectedUser.businessInfo.snsMainGoals.length > 0 && (
+                    <p><span className="font-medium">SNS活用目標:</span> {selectedUser.businessInfo.snsMainGoals.join(', ')}</p>
+                  )}
+                  {selectedUser.businessInfo.brandMission && (
+                    <p><span className="font-medium">ブランドミッション:</span> {selectedUser.businessInfo.brandMission}</p>
+                  )}
                 </div>
               </div>
 
@@ -497,10 +505,10 @@ export default function UsersPage() {
                       <div key={sns} className="border rounded p-3">
                         <h4 className="font-medium text-sm">{snsLabels[sns]}</h4>
                         <div className="text-xs space-y-1 mt-2">
-                          <p><span className="font-medium">トーン:</span> {setting.tone}</p>
-                          <p><span className="font-medium">言語:</span> {setting.language}</p>
-                          <p><span className="font-medium">投稿頻度:</span> {setting.postFrequency}</p>
-                          <p><span className="font-medium">自動投稿:</span> {setting.autoPost ? 'ON' : 'OFF'}</p>
+                          {setting.whyThisSNS && <p><span className="font-medium">選定理由:</span> {setting.whyThisSNS}</p>}
+                          {setting.snsGoal && <p><span className="font-medium">目標:</span> {setting.snsGoal}</p>}
+                          {setting.postFrequency && <p><span className="font-medium">投稿頻度:</span> {setting.postFrequency}</p>}
+                          {setting.tone && <p><span className="font-medium">トーン:</span> {setting.tone}</p>}
                         </div>
                       </div>
                     )

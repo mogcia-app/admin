@@ -6,11 +6,11 @@ export interface User {
   createdAt: string
   updatedAt: string
   isActive: boolean
-  snsCount: number // 契約SNS数 (1-4)
+  snsCount: number // 契約SNS数 (1-3) ※4は将来的に必要になる可能性あり
   // ビジネス情報
   usageType: 'team' | 'solo'
   contractType: 'annual' | 'trial'
-  contractSNS: ('instagram' | 'x' | 'youtube' | 'tiktok')[]
+  contractSNS: ('instagram' | 'x' | /* 'youtube' | */ 'tiktok')[]
   snsAISettings: SNSAISettings
   businessInfo: BusinessInfo
   status: 'active' | 'inactive' | 'suspended'
@@ -92,8 +92,8 @@ export interface UserProfile {
   email: string
   usageType: 'team' | 'solo'
   contractType: 'annual' | 'trial'
-  contractSNS: ('instagram' | 'x' | 'youtube' | 'tiktok')[]
-  snsCount: number // 契約SNS数 (1-4)
+  contractSNS: ('instagram' | 'x' | /* 'youtube' | */ 'tiktok')[]
+  snsCount: number // 契約SNS数 (1-3) ※4は将来的に必要になる可能性あり
   snsAISettings: SNSAISettings
   businessInfo: BusinessInfo
   status: 'active' | 'inactive' | 'suspended'
@@ -109,32 +109,51 @@ export interface UserProfile {
 export interface SNSAISettings {
   instagram?: SNSAISetting
   x?: SNSAISetting
-  youtube?: SNSAISetting
+  // youtube?: SNSAISetting // 将来的に必要になる可能性あり
   tiktok?: SNSAISetting
 }
 
 export interface SNSAISetting {
   enabled: boolean
-  tone: 'casual' | 'professional' | 'friendly' | 'energetic'
-  language: 'japanese' | 'english' | 'mixed'
-  postFrequency: 'high' | 'medium' | 'low'
-  targetAudience: string
-  brandVoice: string
-  keywords: string[]
-  customPrompts?: string[]
-  autoPost: boolean
-  contentTypes: ('text' | 'image' | 'video' | 'story')[]
+  // なぜこのSNSを選んだのか
+  whyThisSNS: string
+  // このSNSでの目標・期待する成果
+  snsGoal: string
+  // コンテンツの方向性
+  contentDirection: string
+  // 投稿頻度の目安
+  postFrequency: string
+  // ターゲットとするアクション
+  targetAction: string
+  // トーン＆マナー
+  tone: string
+  // 重視する指標
+  focusMetrics: string[]
+  // その他の戦略メモ
+  strategyNotes?: string
 }
 
 export interface BusinessInfo {
+  // 業種・事業内容
   industry: string
   companySize: 'individual' | 'small' | 'medium' | 'large'
   businessType: 'b2b' | 'b2c' | 'both'
   description: string
-  targetMarket: string
-  goals: string[]
+  
+  // SNS活用の大目標（Why SNS?）
+  snsMainGoals: string[] // 例: ['認知拡大で月間新規顧客100人', 'EC売上30%UP']
+  
+  // ブランドの核
+  brandMission: string // ブランドのミッション・理念
+  targetCustomer: string // ターゲット顧客の詳細
+  uniqueValue: string // 独自の価値・差別化ポイント
+  brandVoice: string // ブランドの声・トーン
+  
+  // 測定したいKPI
+  kpiTargets: string[] // 例: ['月間新規顧客100人', 'リピート率50%']
+  
+  // 現在の課題
   challenges: string[]
-  currentSNSStrategy?: string
 }
 
 export interface BillingInfo {
@@ -445,4 +464,59 @@ export interface AICapability {
   category: 'analytics' | 'management' | 'reporting' | 'automation'
   isEnabled: boolean
   examples: string[]
+}
+
+// ブログ管理システム用の型定義
+export interface BlogPost {
+  id: string
+  title: string
+  slug: string // URL用のスラッグ
+  excerpt: string // 抜粋文
+  content: string // 本文（Markdown対応）
+  featuredImage?: string // メイン画像
+  images: string[] // 本文内画像
+  category: string // カテゴリ
+  tags: string[] // タグ
+  status: 'draft' | 'published' | 'archived'
+  publishedAt?: string // 公開日時
+  createdAt: string
+  updatedAt: string
+  author: string // 作成者
+  viewCount: number
+  seoTitle?: string
+  seoDescription?: string
+  readingTime?: number // 読了時間（分）
+}
+
+export interface BlogCategory {
+  id: string
+  name: string
+  slug: string
+  description?: string
+  color: string
+  postCount: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface BlogTag {
+  id: string
+  name: string
+  slug: string
+  color?: string
+  postCount: number
+  createdAt: string
+}
+
+export interface BlogStats {
+  totalPosts: number
+  publishedPosts: number
+  draftPosts: number
+  totalViews: number
+  totalCategories: number
+  totalTags: number
+  averageViewsPerPost: number
+  mostPopularPost?: BlogPost
+  postsByCategory: Record<string, number>
+  postsByMonth: Record<string, number>
 }
