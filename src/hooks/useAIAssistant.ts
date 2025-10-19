@@ -17,7 +17,7 @@ import {
   generateAIResponse
 } from '@/lib/ai-assistant'
 import { adminAI, isAIAvailable, AIMessage as AIServiceMessage } from '@/lib/ai-service'
-import { generateTemplateResponse, TemplateResponse } from '@/lib/template-responses'
+import { generateComprehensiveTemplateResponse, ComprehensiveTemplateResponse } from '@/lib/comprehensive-templates'
 
 export function useAIChats(adminId: string) {
   const [chats, setChats] = useState<AdminAIChat[]>([])
@@ -168,10 +168,10 @@ export function useAIChat(chatId: string | null) {
         updatedAt: new Date().toISOString()
       } : null)
 
-      // まずテンプレート回答をチェック
-      let templateResponse: TemplateResponse | null = null
+      // まず包括的テンプレート回答をチェック
+      let templateResponse: ComprehensiveTemplateResponse | null = null
       try {
-        templateResponse = await generateTemplateResponse(content)
+        templateResponse = await generateComprehensiveTemplateResponse(content)
       } catch (error) {
         console.error('Template response error:', error)
       }
@@ -184,15 +184,17 @@ export function useAIChat(chatId: string | null) {
       }
 
       if (templateResponse) {
-        // テンプレート回答を使用
+        // 包括的テンプレート回答を使用
         aiResponseContent = templateResponse.content
         aiMetadata = {
           ...aiMetadata,
           ...templateResponse.metadata,
           actionTaken: 'template_response',
-          templateUsed: templateResponse.metadata?.templateUsed
+          templateUsed: templateResponse.metadata?.templateUsed,
+          page: templateResponse.metadata?.page,
+          category: templateResponse.metadata?.category
         }
-        console.log('Using template response:', templateResponse.metadata?.templateUsed)
+        console.log('Using comprehensive template response:', templateResponse.metadata?.templateUsed)
       } else if (isAIAvailable()) {
         try {
           // 実際のAI APIを使用して応答を生成

@@ -447,6 +447,9 @@ export interface AIMessage {
     templateUsed?: string
     customerSearch?: boolean
     toolFunction?: boolean
+    page?: string
+    category?: string
+    actionRequired?: boolean
     usage?: {
       promptTokens: number
       completionTokens: number

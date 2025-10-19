@@ -89,12 +89,12 @@ export function ChatInterface({
   }
 
   const quickPrompts = [
-    '顧客を検索して',
-    'ログイン機能の使い方を教えて',
-    'システムの稼働状況を確認',
-    'KPIの達成状況はどう？',
-    'ダッシュボードの機能について',
-    'ユーザー管理の方法を教えて'
+    'ユーザーを検索して',
+    'プロンプトを作成する方法',
+    'お知らせを送信する方法',
+    'ガイドを作成する方法',
+    'アクセス制御の設定方法',
+    'エラー監視の使い方'
   ]
 
   if (loading) {
@@ -203,6 +203,16 @@ export function ChatInterface({
                                 📋 テンプレート回答
                               </span>
                             )}
+                            {msg.metadata.page && (
+                              <span className="bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full">
+                                📄 {msg.metadata.page === 'users' ? 'ユーザー管理' : 
+                                     msg.metadata.page === 'prompts' ? 'プロンプト管理' :
+                                     msg.metadata.page === 'notifications' ? 'お知らせ管理' :
+                                     msg.metadata.page === 'guides' ? 'ガイド管理' :
+                                     msg.metadata.page === 'access_control' ? 'アクセス制御' :
+                                     msg.metadata.page === 'monitoring' ? 'エラー監視' : msg.metadata.page}
+                              </span>
+                            )}
                             {msg.metadata.customerSearch && (
                               <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
                                 🔍 顧客検索
@@ -211,6 +221,11 @@ export function ChatInterface({
                             {msg.metadata.toolFunction && (
                               <span className="bg-orange-100 text-orange-700 px-2 py-1 rounded-full">
                                 🛠️ ツール機能
+                              </span>
+                            )}
+                            {msg.metadata.actionRequired && (
+                              <span className="bg-red-100 text-red-700 px-2 py-1 rounded-full">
+                                ⚡ アクション必要
                               </span>
                             )}
                             {msg.metadata.dataQuery && (
