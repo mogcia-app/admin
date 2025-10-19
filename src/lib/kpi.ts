@@ -381,7 +381,8 @@ function generateMonthlyRevenueData(totalRevenue: number, startDate: string, end
       date: dateStr,
       amount: Math.round(dailyRevenue),
       source: 'subscription',
-      plan: 'pro',
+      plan: 'professional',
+      currency: 'JPY',
       createdAt: new Date().toISOString()
     })
   }
@@ -404,6 +405,7 @@ function generateUserGrowthData(totalNewUsers: number, startDate: string, endDat
       date: dateStr,
       newUsers: dailyUsers,
       source: 'organic',
+      conversionRate: 0,
       createdAt: new Date().toISOString()
     })
   }
