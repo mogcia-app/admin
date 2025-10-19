@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Bot, Loader2, RefreshCw, MessageSquare, Sparkles, Key, CheckCircle, XCircle } from 'lucide-react'
+import { Bot, Loader2, RefreshCw, MessageSquare, Sparkles, Key, CheckCircle, XCircle, Database } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
