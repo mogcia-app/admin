@@ -89,12 +89,12 @@ export function ChatInterface({
   }
 
   const quickPrompts = [
-    '今月の売上状況を教えて',
-    'ユーザーの利用傾向を分析して',
+    '田中さんという顧客を検索して',
+    'ログイン機能の使い方を教えて',
     'システムの稼働状況を確認',
     'KPIの達成状況はどう？',
-    '新規ユーザーの獲得状況',
-    'チャーンレートの推移'
+    'ダッシュボードの機能について',
+    'ユーザー管理の方法を教えて'
   ]
 
   if (loading) {
@@ -198,14 +198,34 @@ export function ChatInterface({
                         {/* メタデータ表示 */}
                         {msg.metadata && (
                           <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                            {msg.metadata.dataQuery && (
+                            {msg.metadata.templateUsed && (
+                              <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded-full">
+                                📋 テンプレート回答
+                              </span>
+                            )}
+                            {msg.metadata.customerSearch && (
                               <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                                🔍 顧客検索
+                              </span>
+                            )}
+                            {msg.metadata.toolFunction && (
+                              <span className="bg-orange-100 text-orange-700 px-2 py-1 rounded-full">
+                                🛠️ ツール機能
+                              </span>
+                            )}
+                            {msg.metadata.dataQuery && (
+                              <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full">
                                 データ分析
                               </span>
                             )}
                             {msg.metadata.chartGenerated && (
                               <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full">
                                 チャート生成
+                              </span>
+                            )}
+                            {msg.metadata.actionTaken === 'ai_response' && (
+                              <span className="bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full">
+                                🤖 AI回答
                               </span>
                             )}
                           </div>
@@ -305,7 +325,9 @@ export function ChatInterface({
         )}
         
         <p className="text-xs text-muted-foreground mt-2 text-center">
-          AIアシスタントは管理業務をサポートします。データ分析、レポート生成、システム監視などお気軽にご相談ください。
+          AIアシスタントは管理業務をサポートします。顧客検索、ツール機能の質問、データ分析などお気軽にご相談ください。
+          <br />
+          <span className="text-purple-600">📋 テンプレート回答</span>でトークン費を節約し、<span className="text-indigo-600">🤖 AI回答</span>で詳細な分析を提供します。
         </p>
       </div>
     </div>

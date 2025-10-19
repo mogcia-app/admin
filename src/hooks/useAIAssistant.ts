@@ -17,6 +17,7 @@ import {
   generateAIResponse
 } from '@/lib/ai-assistant'
 import { adminAI, isAIAvailable, AIMessage as AIServiceMessage } from '@/lib/ai-service'
+import { generateTemplateResponse, TemplateResponse } from '@/lib/template-responses'
 
 export function useAIChats(adminId: string) {
   const [chats, setChats] = useState<AdminAIChat[]>([])
@@ -167,7 +168,14 @@ export function useAIChat(chatId: string | null) {
         updatedAt: new Date().toISOString()
       } : null)
 
-      // AI機能が利用可能かチェック
+      // まずテンプレート回答をチェック
+      let templateResponse: TemplateResponse | null = null
+      try {
+        templateResponse = await generateTemplateResponse(content)
+      } catch (error) {
+        console.error('Template response error:', error)
+      }
+
       let aiResponseContent: string
       let aiMetadata: any = {
         dataQuery: content.toLowerCase().includes('データ') || content.toLowerCase().includes('分析'),
@@ -175,12 +183,23 @@ export function useAIChat(chatId: string | null) {
         actionTaken: 'response_generated'
       }
 
-      if (isAIAvailable()) {
+      if (templateResponse) {
+        // テンプレート回答を使用
+        aiResponseContent = templateResponse.content
+        aiMetadata = {
+          ...aiMetadata,
+          ...templateResponse.metadata,
+          actionTaken: 'template_response',
+          templateUsed: templateResponse.metadata?.templateUsed
+        }
+        console.log('Using template response:', templateResponse.metadata?.templateUsed)
+      } else if (isAIAvailable()) {
         try {
           // 実際のAI APIを使用して応答を生成
           const aiResponse = await adminAI.askQuestion(content)
           aiResponseContent = aiResponse.message
           aiMetadata.usage = aiResponse.usage
+          aiMetadata.actionTaken = 'ai_response'
         } catch (aiError) {
           console.error('AI API Error:', aiError)
           aiResponseContent = `申し訳ございません。AI機能でエラーが発生しました。\n\n${aiError instanceof Error ? aiError.message : 'AI APIに接続できませんでした。'}\n\nAPIキーが正しく設定されているか確認してください。`
@@ -192,6 +211,7 @@ export function useAIChat(chatId: string | null) {
           chatHistory: chat.messages,
           adminId: chat.adminId
         })
+        aiMetadata.actionTaken = 'fallback_response'
       }
 
       // AI応答メッセージを追加
