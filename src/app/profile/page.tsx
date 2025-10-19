@@ -253,7 +253,7 @@ export default function ProfilePage() {
               )}
               <div className="flex items-center gap-3 text-sm">
                 <Calendar className="h-4 w-4 text-muted-foreground" />
-                <span>参加日: {new Date(isEditing ? formData.joinDate : profile.joinDate).toLocaleDateString('ja-JP')}</span>
+                <span>参加日: {new Date(isEditing ? formData.createdAt : profile.createdAt).toLocaleDateString('ja-JP')}</span>
               </div>
             </CardContent>
           </Card>
@@ -453,21 +453,21 @@ export default function ProfilePage() {
                     />
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm">プッシュ通知</span>
+                    <span className="text-sm">ブラウザ通知</span>
                     <input
                       type="checkbox"
-                      checked={isEditing ? formData.preferences.notifications.push : profile.preferences.notifications.push}
-                      onChange={(e) => isEditing && handlePreferenceChange('notifications', 'push', e.target.checked)}
+                      checked={isEditing ? formData.preferences.notifications.browser : profile.preferences.notifications.browser}
+                      onChange={(e) => isEditing && handlePreferenceChange('notifications', 'browser', e.target.checked)}
                       disabled={!isEditing}
                       className="rounded"
                     />
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm">SMS通知</span>
+                    <span className="text-sm">Slack通知</span>
                     <input
                       type="checkbox"
-                      checked={isEditing ? formData.preferences.notifications.sms : profile.preferences.notifications.sms}
-                      onChange={(e) => isEditing && handlePreferenceChange('notifications', 'sms', e.target.checked)}
+                      checked={isEditing ? formData.preferences.notifications.slack : profile.preferences.notifications.slack}
+                      onChange={(e) => isEditing && handlePreferenceChange('notifications', 'slack', e.target.checked)}
                       disabled={!isEditing}
                       className="rounded"
                     />
