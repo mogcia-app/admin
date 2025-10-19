@@ -33,12 +33,12 @@ const sidebarItems: SidebarItem[] = [
     icon: MessageSquare,
     href: '/prompts',
   },
-  {
-    id: 'kpi',
-    label: 'KPIダッシュボード',
-    icon: TrendingUp,
-    href: '/kpi',
-  },
+  // {
+  //   id: 'kpi',
+  //   label: 'KPIダッシュボード',
+  //   icon: TrendingUp,
+  //   href: '/kpi',
+  // },
   {
     id: 'notifications',
     label: 'お知らせ管理',
