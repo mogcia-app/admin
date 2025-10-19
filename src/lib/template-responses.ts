@@ -1,5 +1,5 @@
 // テンプレート回答システム
-import { getUsers } from './users'
+import { userService } from './firebase-admin'
 
 export interface TemplateResponse {
   type: 'template' | 'ai'
@@ -75,7 +75,7 @@ export function detectTemplateType(message: string): TemplateType | null {
 export async function generateCustomerSearchResponse(message: string): Promise<TemplateResponse> {
   try {
     // ユーザー一覧を取得
-    const users = await getUsers()
+    const users = await userService.getUsers()
     
     // 検索キーワードを抽出（より柔軟な実装）
     const searchTerms = message

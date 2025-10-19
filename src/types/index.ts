@@ -444,6 +444,14 @@ export interface AIMessage {
     dataQuery?: boolean
     chartGenerated?: boolean
     actionTaken?: string
+    templateUsed?: string
+    customerSearch?: boolean
+    toolFunction?: boolean
+    usage?: {
+      promptTokens: number
+      completionTokens: number
+      totalTokens: number
+    }
   }
 }
 
