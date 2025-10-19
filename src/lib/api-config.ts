@@ -41,6 +41,11 @@ export const API_ENDPOINTS = {
     delete: `${FUNCTIONS_BASE_URL}/deleteNotification`,
     stats: `${FUNCTIONS_BASE_URL}/getNotificationStats`,
   },
+  
+  // エラー監視
+  monitoring: {
+    reportError: `${FUNCTIONS_BASE_URL}/reportError`,
+  },
 }
 
 // HTTP ヘルパー関数

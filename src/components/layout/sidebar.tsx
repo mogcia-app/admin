@@ -34,12 +34,6 @@ const sidebarItems: SidebarItem[] = [
     href: '/prompts',
   },
   {
-    id: 'analytics',
-    label: 'アナリティクス',
-    icon: BarChart3,
-    href: '/analytics',
-  },
-  {
     id: 'kpi',
     label: 'KPIダッシュボード',
     icon: TrendingUp,

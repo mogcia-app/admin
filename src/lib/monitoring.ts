@@ -329,4 +329,34 @@ export async function getSalesStats(): Promise<{
   }
 }
 
+// 別プロジェクトからのエラー送信
+export async function reportErrorFromExternal(errorData: {
+  level: 'fatal' | 'error' | 'warn' | 'info'
+  message: string
+  source: string
+  stack?: string
+  metadata?: Record<string, any>
+}): Promise<{ success: boolean; id?: string; error?: string }> {
+  try {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_FUNCTIONS_BASE_URL}/reportError`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(errorData),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.error || 'Failed to report error')
+    }
+
+    const result = await response.json()
+    return { success: true, id: result.id }
+  } catch (error) {
+    console.error('Error reporting error:', error)
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+  }
+}
+
 // サンプル監視データの作成

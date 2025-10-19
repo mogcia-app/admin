@@ -1,14 +1,12 @@
 'use client'
 
-import React, { useState } from 'react'
-import { AlertTriangle, TrendingUp, Loader2, RefreshCw, BarChart3, DollarSign, Briefcase, CheckCircle } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { AlertTriangle, Loader2, RefreshCw, CheckCircle, Bell, Activity } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ErrorMonitor } from '@/components/monitoring/error-monitor'
-import { SalesTracker } from '@/components/monitoring/sales-tracker'
 import { PieChart } from '@/components/charts/pie-chart'
-import { BarChart } from '@/components/charts/bar-chart'
-import { useErrorLogs, useSalesProgress, useDeals, useErrorStats, useSalesStats } from '@/hooks/useMonitoring'
+import { useErrorLogs, useErrorStats } from '@/hooks/useMonitoring'
 
 export default function MonitoringPage() {
   const { 
@@ -21,46 +19,41 @@ export default function MonitoringPage() {
   } = useErrorLogs()
   
   const { 
-    salesProgress, 
-    loading: salesLoading, 
-    error: salesError, 
-    updateProgress, 
-    refreshSalesProgress 
-  } = useSalesProgress()
-  
-  const { 
-    deals, 
-    loading: dealsLoading, 
-    error: dealsError, 
-    updateDeal, 
-    refreshDeals 
-  } = useDeals()
-  
-  const { 
     stats: errorStats, 
     loading: errorStatsLoading, 
     refreshStats: refreshErrorStats 
   } = useErrorStats()
-  
-  const { 
-    stats: salesStats, 
-    loading: salesStatsLoading, 
-    refreshStats: refreshSalesStats 
-  } = useSalesStats()
 
-  const [activeView, setActiveView] = useState<'overview' | 'errors' | 'sales'>('overview')
+  const [activeView, setActiveView] = useState<'overview' | 'errors'>('overview')
+  const [isRealTimeEnabled, setIsRealTimeEnabled] = useState(false)
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date())
 
 
   const handleRefresh = () => {
     refreshErrorLogs()
-    refreshSalesProgress()
-    refreshDeals()
     refreshErrorStats()
-    refreshSalesStats()
+    setLastUpdate(new Date())
   }
 
+  // リアルタイム監視の設定
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null
+
+    if (isRealTimeEnabled) {
+      interval = setInterval(() => {
+        handleRefresh()
+      }, 30000) // 30秒ごとに更新
+    }
+
+    return () => {
+      if (interval) {
+        clearInterval(interval)
+      }
+    }
+  }, [isRealTimeEnabled])
+
   // エラーレベル別チャートデータ
-  const errorLevelData = Object.entries(errorStats.errorsByLevel).map(([level, count]) => ({
+  const errorLevelData = Object.entries(errorStats.errorsByLevel || {}).map(([level, count]) => ({
     x: level,
     y: count,
     label: `${level}: ${count}件`,
@@ -69,43 +62,47 @@ export default function MonitoringPage() {
            level === 'warn' ? '#eab308' : '#3b82f6'
   }))
 
-  // 案件ステージ別チャートデータ
-  const dealStageData = [{
-    name: '案件ステージ',
-    data: Object.entries(salesStats.dealsByStage).map(([stage, count]) => ({
-      x: stage === 'lead' ? 'リード' :
-         stage === 'qualified' ? '見込み客' :
-         stage === 'proposal' ? '提案' :
-         stage === 'negotiation' ? '交渉' :
-         stage === 'closed_won' ? '受注' :
-         stage === 'closed_lost' ? '失注' : stage,
-      y: count,
-      label: `${stage}: ${count}件`
-    })),
+  // エラーソース別チャートデータ
+  const errorSourceData = Object.entries(errorStats.errorsBySource || {}).map(([source, count]) => ({
+    x: source,
+    y: count,
+    label: `${source}: ${count}件`,
     color: '#3b82f6'
-  }]
+  }))
 
   const tabs = [
     { id: 'overview', label: '概要', icon: '📊' },
-    { id: 'errors', label: 'エラー監視', icon: '⚠️' },
-    { id: 'sales', label: '営業進捗', icon: '📈' }
+    { id: 'errors', label: 'エラー監視', icon: '⚠️' }
   ]
 
-  const anyError = errorError || salesError || dealsError
-  const anyLoading = errorLoading || salesLoading || dealsLoading || errorStatsLoading || salesStatsLoading
+  const anyError = errorError
+  const anyLoading = errorLoading || errorStatsLoading
 
   return (
     <div className="space-y-6">
       {/* ヘッダー */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">エラー監視・営業進捗管理</h1>
+          <h1 className="text-3xl font-bold tracking-tight">エラー監視システム</h1>
           <p className="text-muted-foreground">
-            システムエラーの監視と営業活動の進捗管理
+            システムエラーの監視と管理
             {anyError && <span className="text-destructive ml-2">({anyError})</span>}
+            {isRealTimeEnabled && (
+              <span className="text-green-600 ml-2">
+                • 最終更新: {lastUpdate.toLocaleTimeString('ja-JP')}
+              </span>
+            )}
           </p>
         </div>
         <div className="flex gap-2">
+          <Button 
+            onClick={() => setIsRealTimeEnabled(!isRealTimeEnabled)}
+            variant={isRealTimeEnabled ? "default" : "outline"}
+            className={isRealTimeEnabled ? "bg-green-600 hover:bg-green-700" : ""}
+          >
+            <Activity className="h-4 w-4 mr-2" />
+            {isRealTimeEnabled ? 'リアルタイム監視中' : 'リアルタイム監視開始'}
+          </Button>
           <Button onClick={handleRefresh} variant="outline">
             <RefreshCw className="h-4 w-4 mr-2" />
             更新
@@ -121,9 +118,9 @@ export default function MonitoringPage() {
             <AlertTriangle className="h-4 w-4 text-red-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{errorStats.totalErrors}</div>
+            <div className="text-2xl font-bold">{errorStats.totalErrors || 0}</div>
             <p className="text-xs text-muted-foreground">
-              未解決 {errorStats.unresolvedErrors}件
+              未解決 {errorStats.unresolvedErrors || 0}件
             </p>
           </CardContent>
         </Card>
@@ -134,7 +131,7 @@ export default function MonitoringPage() {
             <AlertTriangle className="h-4 w-4 text-orange-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{errorStats.criticalErrors}</div>
+            <div className="text-2xl font-bold text-orange-600">{errorStats.criticalErrors || 0}</div>
             <p className="text-xs text-muted-foreground">
               要対応
             </p>
@@ -143,33 +140,30 @@ export default function MonitoringPage() {
         
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">総売上</CardTitle>
-            <DollarSign className="h-4 w-4 text-green-600" />
+            <CardTitle className="text-sm font-medium">エラーソース数</CardTitle>
+            <Activity className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {new Intl.NumberFormat('ja-JP', {
-                style: 'currency',
-                currency: 'JPY',
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0,
-              }).format(salesStats.totalRevenue)}
+            <div className="text-2xl font-bold text-blue-600">
+              {Object.keys(errorStats.errorsBySource || {}).length}
             </div>
             <p className="text-xs text-muted-foreground">
-              受注率 {salesStats.conversionRate.toFixed(1)}%
+              監視中システム
             </p>
           </CardContent>
         </Card>
         
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">案件数</CardTitle>
-            <Briefcase className="h-4 w-4 text-blue-600" />
+            <CardTitle className="text-sm font-medium">解決済み</CardTitle>
+            <CheckCircle className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{salesStats.totalDeals}</div>
+            <div className="text-2xl font-bold text-green-600">
+              {(errorStats.totalErrors || 0) - (errorStats.unresolvedErrors || 0)}
+            </div>
             <p className="text-xs text-muted-foreground">
-              受注 {salesStats.closedDeals}件
+              解決済みエラー
             </p>
           </CardContent>
         </Card>
@@ -181,7 +175,7 @@ export default function MonitoringPage() {
           {tabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveView(tab.id as 'overview' | 'errors' | 'sales')}
+              onClick={() => setActiveView(tab.id as 'overview' | 'errors')}
               className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
                 activeView === tab.id
                   ? 'border-primary text-primary'
@@ -210,14 +204,13 @@ export default function MonitoringPage() {
                 }}
               />
 
-              {/* 案件ステージ別分布 */}
-              <BarChart
-                data={dealStageData}
+              {/* エラーソース別分布 */}
+              <PieChart
+                data={errorSourceData}
                 config={{
-                  title: '案件ステージ別分布',
-                  subtitle: '営業案件の進捗状況',
-                  height: 350,
-                  showLegend: false
+                  title: 'エラーソース別分布',
+                  subtitle: 'システム別エラー発生状況',
+                  height: 350
                 }}
               />
             </div>
@@ -232,7 +225,7 @@ export default function MonitoringPage() {
                 <CardDescription>直近の未解決エラー（上位5件）</CardDescription>
               </CardHeader>
               <CardContent>
-                {errorStats.recentErrors.length > 0 ? (
+                {errorStats.recentErrors && errorStats.recentErrors.length > 0 ? (
                   <div className="space-y-3">
                     {errorStats.recentErrors.slice(0, 5).map((error) => (
                       <div key={error.id} className="flex items-center justify-between p-3 border rounded">
@@ -274,68 +267,81 @@ export default function MonitoringPage() {
               </CardContent>
             </Card>
 
-            {/* 月次営業実績サマリー */}
+            {/* エラー監視設定 */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-green-600" />
-                  月次営業実績サマリー
+                  <Bell className="h-5 w-5 text-blue-600" />
+                  エラー監視設定
                 </CardTitle>
-                <CardDescription>最近の営業成果</CardDescription>
+                <CardDescription>別プロジェクトからのエラー送信設定</CardDescription>
               </CardHeader>
               <CardContent>
-                {salesStats.monthlyProgress.length > 0 ? (
-                  <div className="space-y-4">
-                    {salesStats.monthlyProgress.slice(0, 3).map((progress) => {
-                      const achievementRate = (progress.achieved / progress.target) * 100
-                      
-                      return (
-                        <div key={progress.id} className="flex items-center justify-between p-3 border rounded">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-3">
-                              <span className="font-medium">
-                                {new Date(progress.period).toLocaleDateString('ja-JP', {
-                                  year: 'numeric',
-                                  month: 'long'
-                                })}
-                              </span>
-                              <span className="text-sm text-muted-foreground">
-                                {progress.salesRep}
-                              </span>
-                            </div>
-                            <div className="text-sm text-muted-foreground">
-                              目標: {new Intl.NumberFormat('ja-JP', {
-                                style: 'currency',
-                                currency: 'JPY',
-                                minimumFractionDigits: 0,
-                              }).format(progress.target)} • 
-                              実績: {new Intl.NumberFormat('ja-JP', {
-                                style: 'currency',
-                                currency: 'JPY',
-                                minimumFractionDigits: 0,
-                              }).format(progress.achieved)}
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div className={`text-lg font-bold ${
-                              achievementRate >= 100 ? 'text-green-600' :
-                              achievementRate >= 80 ? 'text-blue-600' :
-                              'text-orange-600'
-                            }`}>
-                              {achievementRate.toFixed(1)}%
-                            </div>
-                            <div className="text-xs text-muted-foreground">達成率</div>
-                          </div>
-                        </div>
-                      )
-                    })}
+                <div className="space-y-4">
+                  <div className="p-4 border rounded-lg bg-blue-50">
+                    <h4 className="font-medium text-blue-900 mb-2">エラー送信API</h4>
+                    <p className="text-sm text-blue-700 mb-3">
+                      別プロジェクト（ツール側）からエラーを送信するためのAPIエンドポイント
+                    </p>
+                    <div className="bg-white p-3 rounded border font-mono text-sm">
+                      POST {process.env.NEXT_PUBLIC_FUNCTIONS_BASE_URL}/reportError
+                    </div>
                   </div>
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <BarChart3 className="h-8 w-8 mx-auto mb-2" />
-                    <p>営業実績データがありません</p>
+                  
+                  <div className="p-4 border rounded-lg bg-green-50">
+                    <h4 className="font-medium text-green-900 mb-2">送信データ形式</h4>
+                    <pre className="text-sm text-green-700 bg-white p-3 rounded border overflow-x-auto">
+{`{
+  "level": "error|warn|info|fatal",
+  "message": "エラーメッセージ",
+  "source": "プロジェクト名",
+  "stack": "スタックトレース（任意）",
+  "metadata": {
+    "userId": "ユーザーID（任意）",
+    "sessionId": "セッションID（任意）"
+  }
+}`}
+                    </pre>
                   </div>
-                )}
+                  
+                  <div className="p-4 border rounded-lg bg-yellow-50">
+                    <h4 className="font-medium text-yellow-900 mb-2">使用例（JavaScript）</h4>
+                    <pre className="text-sm text-yellow-700 bg-white p-3 rounded border overflow-x-auto">
+{`// 別プロジェクト（ツール側）での使用例
+async function reportError(error, source = 'tool-project') {
+  try {
+    const response = await fetch('${process.env.NEXT_PUBLIC_FUNCTIONS_BASE_URL}/reportError', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        level: 'error',
+        message: error.message,
+        source: source,
+        stack: error.stack,
+        metadata: {
+          userId: getCurrentUserId(),
+          url: window.location.href
+        }
+      })
+    });
+    
+    if (response.ok) {
+      console.log('Error reported successfully');
+    }
+  } catch (err) {
+    console.error('Failed to report error:', err);
+  }
+}
+
+// 使用例
+try {
+  // 何らかの処理
+} catch (error) {
+  reportError(error, 'tool-project');
+}`}
+                    </pre>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -347,16 +353,6 @@ export default function MonitoringPage() {
             loading={anyLoading}
             onResolveError={resolveError}
             onUpdateError={updateError}
-          />
-        )}
-
-        {activeView === 'sales' && (
-          <SalesTracker
-            salesProgress={salesProgress}
-            deals={deals}
-            loading={anyLoading}
-            onUpdateProgress={updateProgress}
-            onUpdateDeal={updateDeal}
           />
         )}
       </div>

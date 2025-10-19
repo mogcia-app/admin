@@ -140,6 +140,77 @@ export const getDashboardData = functions.https.onRequest(async (req, res) => {
 })
 
 // =============================================================================
+// エラー監視API
+// =============================================================================
+export const reportError = functions.https.onRequest(async (req, res) => {
+  try {
+    // CORSヘッダーの設定
+    res.set('Access-Control-Allow-Origin', '*')
+    res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE')
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+
+    if (req.method === 'OPTIONS') {
+      res.status(204).send('')
+      return
+    }
+
+    if (req.method !== 'POST') {
+      res.status(405).json({ error: 'Method not allowed' })
+      return
+    }
+
+    const { level, message, source, stack, metadata } = req.body
+
+    // 必須フィールドの検証
+    if (!level || !message || !source) {
+      res.status(400).json({ 
+        error: 'Missing required fields: level, message, source are required' 
+      })
+      return
+    }
+
+    // エラーレベルの検証
+    const validLevels = ['fatal', 'error', 'warn', 'info']
+    if (!validLevels.includes(level)) {
+      res.status(400).json({ 
+        error: 'Invalid level. Must be one of: fatal, error, warn, info' 
+      })
+      return
+    }
+
+    // Firestoreにエラーログを保存
+    const errorLog = {
+      level,
+      message,
+      source,
+      stack: stack || null,
+      metadata: metadata || {},
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      resolved: false,
+      count: 1
+    }
+
+    const docRef = await admin.firestore().collection('errorLogs').add(errorLog)
+
+    console.log('Error reported:', {
+      id: docRef.id,
+      level,
+      message,
+      source
+    })
+
+    res.status(201).json({ 
+      success: true, 
+      id: docRef.id,
+      message: 'Error reported successfully' 
+    })
+  } catch (error) {
+    console.error('Error reporting error:', error)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+// =============================================================================
 // プロンプト管理API
 // =============================================================================
 
