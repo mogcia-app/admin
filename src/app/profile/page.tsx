@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -23,97 +23,89 @@ import {
   Camera,
   Key,
   Bell,
-  Globe
+  Globe,
+  Loader2
 } from 'lucide-react'
-
-interface AdminProfile {
-  id: string
-  name: string
-  email: string
-  role: 'admin' | 'super_admin' | 'moderator'
-  avatar?: string
-  phone?: string
-  location?: string
-  bio?: string
-  department?: string
-  joinDate: string
-  lastLogin: string
-  preferences: {
-    language: string
-    timezone: string
-    notifications: {
-      email: boolean
-      push: boolean
-      sms: boolean
-    }
-    theme: 'light' | 'dark' | 'system'
-  }
-  security: {
-    twoFactorEnabled: boolean
-    lastPasswordChange: string
-    loginAttempts: number
-  }
-}
+import { AdminProfile, getCurrentUserProfile, updateUserProfile } from '@/lib/profile'
 
 export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false)
-  const [profile, setProfile] = useState<AdminProfile>({
-    id: 'admin_001',
-    name: '管理者 太郎',
-    email: 'admin@mogcia-app.com',
-    role: 'admin',
-    avatar: '',
-    phone: '+81-90-1234-5678',
-    location: '東京都渋谷区',
-    bio: 'Mogciaアプリの管理者として、ユーザーサポートとシステム管理を担当しています。',
-    department: 'システム管理部',
-    joinDate: '2024-01-15',
-    lastLogin: '2024-09-17T00:30:00Z',
-    preferences: {
-      language: 'ja',
-      timezone: 'Asia/Tokyo',
-      notifications: {
-        email: true,
-        push: true,
-        sms: false
-      },
-      theme: 'system'
-    },
-    security: {
-      twoFactorEnabled: false,
-      lastPasswordChange: '2024-08-15',
-      loginAttempts: 0
-    }
-  })
+  const [profile, setProfile] = useState<AdminProfile | null>(null)
+  const [formData, setFormData] = useState<AdminProfile | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const [formData, setFormData] = useState(profile)
+  // 現在のユーザーID（実際の実装では認証システムから取得）
+  const currentUserId = 'admin_001' // 仮のユーザーID
+
+  // プロフィールデータを取得
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        const profileData = await getCurrentUserProfile(currentUserId)
+        if (profileData) {
+          setProfile(profileData)
+          setFormData(profileData)
+        } else {
+          setError('プロフィールが見つかりません')
+        }
+      } catch (err) {
+        console.error('Error fetching profile:', err)
+        setError('プロフィールの読み込みに失敗しました')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchProfile()
+  }, [currentUserId])
 
   const handleEdit = () => {
-    setFormData(profile)
-    setIsEditing(true)
+    if (profile) {
+      setFormData(profile)
+      setIsEditing(true)
+    }
   }
 
-  const handleSave = () => {
-    setProfile(formData)
-    setIsEditing(false)
-    // ここでAPIに保存
-    console.log('Profile updated:', formData)
+  const handleSave = async () => {
+    if (!formData) return
+
+    try {
+      setSaving(true)
+      setError(null)
+      await updateUserProfile(currentUserId, formData)
+      setProfile(formData)
+      setIsEditing(false)
+      console.log('Profile updated successfully')
+    } catch (err) {
+      console.error('Error updating profile:', err)
+      setError('プロフィールの更新に失敗しました')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleCancel = () => {
-    setFormData(profile)
-    setIsEditing(false)
+    if (profile) {
+      setFormData(profile)
+      setIsEditing(false)
+    }
   }
 
   const handleChange = (field: string, value: any) => {
-    setFormData(prev => ({
+    setFormData(prev => prev ? ({
       ...prev,
       [field]: value
-    }))
+    }) : null)
   }
 
   const handlePreferenceChange = (category: string, field: string, value: any) => {
     setFormData(prev => {
+      if (!prev) return null
+      
       const currentCategory = prev.preferences[category as keyof typeof prev.preferences]
       const isObject = currentCategory && typeof currentCategory === 'object'
       
@@ -148,6 +140,36 @@ export default function ProfilePage() {
     }
   }
 
+  // ローディング状態
+  if (loading) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="flex items-center gap-2">
+            <Loader2 className="h-6 w-6 animate-spin" />
+            <span>プロフィールを読み込み中...</span>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // エラー状態
+  if (error || !profile || !formData) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <p className="text-red-600 mb-4">{error || 'プロフィールが見つかりません'}</p>
+            <Button onClick={() => window.location.reload()}>
+              再読み込み
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       {/* ヘッダー */}
@@ -159,11 +181,15 @@ export default function ProfilePage() {
         <div className="flex gap-2">
           {isEditing ? (
             <>
-              <Button onClick={handleSave} className="flex items-center gap-2">
-                <Save className="h-4 w-4" />
-                保存
+              <Button onClick={handleSave} disabled={saving} className="flex items-center gap-2">
+                {saving ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
+                {saving ? '保存中...' : '保存'}
               </Button>
-              <Button variant="outline" onClick={handleCancel}>
+              <Button variant="outline" onClick={handleCancel} disabled={saving}>
                 キャンセル
               </Button>
             </>
