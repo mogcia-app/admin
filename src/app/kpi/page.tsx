@@ -79,16 +79,24 @@ export default function KPIPage() {
         {activeTab === 'overview' && (
           <>
             {/* KPI概要 */}
-            {dashboardData && (
+            {dashboardData ? (
               <KPIOverview 
                 data={dashboardData.overview} 
                 loading={dashboardLoading}
               />
+            ) : (
+              <Card>
+                <CardContent className="p-6">
+                  <div className="text-center text-muted-foreground">
+                    <p>KPIデータを読み込み中...</p>
+                  </div>
+                </CardContent>
+              </Card>
             )}
 
             {/* チャート概要 */}
             <div className="grid gap-6 lg:grid-cols-2">
-              {dashboardData && (
+              {dashboardData ? (
                 <>
                   <RevenueChart 
                     data={dashboardData.revenueMetrics.monthlyRevenue}
@@ -110,25 +118,35 @@ export default function KPIPage() {
                         <div className="flex justify-between items-center">
                           <span className="text-sm font-medium">トライアル→有料転換率</span>
                           <span className="text-sm text-blue-600 font-semibold">
-                            {dashboardData.conversionMetrics.trialToPayingConversion}%
+                            {dashboardData.conversionMetrics.trialToPayingConversion.toFixed(1)}%
                           </span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-sm font-medium">サインアップ→トライアル転換率</span>
                           <span className="text-sm text-purple-600 font-semibold">
-                            {dashboardData.conversionMetrics.signupToTrialConversion}%
+                            {dashboardData.conversionMetrics.signupToTrialConversion.toFixed(1)}%
                           </span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-sm font-medium">チャーンレート</span>
                           <span className="text-sm text-orange-600 font-semibold">
-                            {dashboardData.overview.churnRate}%
+                            {dashboardData.overview.churnRate.toFixed(1)}%
                           </span>
                         </div>
                       </div>
                     </CardContent>
                   </Card>
                 </>
+              ) : (
+                <div className="col-span-2">
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="text-center text-muted-foreground">
+                        <p>データを読み込み中...</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
               )}
             </div>
           </>
@@ -136,7 +154,7 @@ export default function KPIPage() {
 
         {activeTab === 'revenue' && (
           <div className="space-y-6">
-            {dashboardData && (
+            {dashboardData ? (
               <>
                 {/* 売上概要カード */}
                 <div className="grid gap-4 md:grid-cols-3">
@@ -265,13 +283,21 @@ export default function KPIPage() {
                   </Card>
                 </div>
               </>
+            ) : (
+              <Card>
+                <CardContent className="p-6">
+                  <div className="text-center text-muted-foreground">
+                    <p>売上データを読み込み中...</p>
+                  </div>
+                </CardContent>
+              </Card>
             )}
           </div>
         )}
 
         {activeTab === 'users' && (
           <div className="space-y-6">
-            {dashboardData && (
+            {dashboardData ? (
               <>
                 {/* ユーザー概要カード */}
                 <div className="grid gap-4 md:grid-cols-4">
@@ -329,16 +355,34 @@ export default function KPIPage() {
                   loading={dashboardLoading}
                 />
               </>
+            ) : (
+              <Card>
+                <CardContent className="p-6">
+                  <div className="text-center text-muted-foreground">
+                    <p>ユーザーデータを読み込み中...</p>
+                  </div>
+                </CardContent>
+              </Card>
             )}
           </div>
         )}
 
         {activeTab === 'metrics' && (
           <div className="space-y-6">
-            <KPIMetrics 
-              metrics={metrics} 
-              loading={metricsLoading}
-            />
+            {metricsLoading ? (
+              <Card>
+                <CardContent className="p-6">
+                  <div className="text-center text-muted-foreground">
+                    <p>KPIメトリクスを読み込み中...</p>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <KPIMetrics 
+                metrics={metrics} 
+                loading={metricsLoading}
+              />
+            )}
           </div>
         )}
       </div>

@@ -209,110 +209,206 @@ export async function getConversionFunnels(): Promise<ConversionFunnel[]> {
   }
 }
 
+// ユーザーデータからKPIを計算する関数
+async function calculateKPIsFromUsers(): Promise<{
+  totalUsers: number
+  activeUsers: number
+  newUsersThisMonth: number
+  churnRate: number
+  totalRevenue: number
+  monthlyRecurringRevenue: number
+  averageRevenuePerUser: number
+  customerLifetimeValue: number
+  revenueBySource: Record<string, number>
+  revenueByPlan: Record<string, number>
+  revenueGrowth: number
+  trialToPayingConversion: number
+  signupToTrialConversion: number
+}> {
+  try {
+    // ユーザーデータを取得
+    const usersSnapshot = await getDocs(collection(db, 'users'))
+    const users = usersSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAt: doc.data().createdAt?.toDate?.() || new Date(),
+      lastLoginAt: doc.data().lastLoginAt?.toDate?.() || null,
+      subscriptionStatus: doc.data().subscriptionStatus || 'free',
+      plan: doc.data().plan || 'free',
+      revenue: doc.data().revenue || 0
+    }))
+
+    const now = new Date()
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0)
+
+    // 基本統計
+    const totalUsers = users.length
+    const activeUsers = users.filter(user => 
+      user.lastLoginAt && user.lastLoginAt >= new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+    ).length
+    const newUsersThisMonth = users.filter(user => 
+      user.createdAt >= startOfMonth && user.createdAt <= endOfMonth
+    ).length
+
+    // チャーン率の計算（過去30日でアクティブでないユーザー）
+    const churnedUsers = users.filter(user => 
+      user.lastLoginAt && user.lastLoginAt < new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+    ).length
+    const churnRate = totalUsers > 0 ? (churnedUsers / totalUsers) * 100 : 0
+
+    // 売上関連の計算
+    const totalRevenue = users.reduce((sum, user) => sum + (user.revenue || 0), 0)
+    const monthlyRecurringRevenue = users
+      .filter(user => user.subscriptionStatus === 'active')
+      .reduce((sum, user) => sum + (user.revenue || 0), 0)
+    const averageRevenuePerUser = totalUsers > 0 ? totalRevenue / totalUsers : 0
+    const customerLifetimeValue = averageRevenuePerUser * 12
+
+    // 売上ソース別・プラン別の計算
+    const revenueBySource = users.reduce((acc, user) => {
+      const source = user.subscriptionStatus === 'active' ? 'subscription' : 'one-time'
+      acc[source] = (acc[source] || 0) + (user.revenue || 0)
+      return acc
+    }, {} as Record<string, number>)
+
+    const revenueByPlan = users.reduce((acc, user) => {
+      const plan = user.plan || 'free'
+      acc[plan] = (acc[plan] || 0) + (user.revenue || 0)
+      return acc
+    }, {} as Record<string, number>)
+
+    // 前月との比較（簡易版）
+    const lastMonthUsers = users.filter(user => 
+      user.createdAt >= startOfLastMonth && user.createdAt <= endOfLastMonth
+    )
+    const lastMonthRevenue = lastMonthUsers.reduce((sum, user) => sum + (user.revenue || 0), 0)
+    const revenueGrowth = lastMonthRevenue > 0 ? ((totalRevenue - lastMonthRevenue) / lastMonthRevenue) * 100 : 0
+
+    // コンバージョン率の計算
+    const trialUsers = users.filter(user => user.subscriptionStatus === 'trial').length
+    const payingUsers = users.filter(user => user.subscriptionStatus === 'active').length
+    const signupUsers = users.filter(user => user.createdAt >= startOfMonth).length
+
+    const trialToPayingConversion = trialUsers > 0 ? (payingUsers / trialUsers) * 100 : 0
+    const signupToTrialConversion = signupUsers > 0 ? (trialUsers / signupUsers) * 100 : 0
+
+    return {
+      totalUsers,
+      activeUsers,
+      newUsersThisMonth,
+      churnRate,
+      totalRevenue,
+      monthlyRecurringRevenue,
+      averageRevenuePerUser,
+      customerLifetimeValue,
+      revenueBySource,
+      revenueByPlan,
+      revenueGrowth,
+      trialToPayingConversion,
+      signupToTrialConversion
+    }
+  } catch (error) {
+    console.error('Error calculating KPIs from users:', error)
+    throw error
+  }
+}
+
 // KPIダッシュボードデータの統合取得
 export async function getKPIDashboardData(): Promise<KPIDashboardData> {
   try {
     const now = new Date()
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0]
-    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().split('T')[0]
-    const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().split('T')[0]
 
-    // 並列でデータを取得
-    const [
-      revenueData,
-      lastMonthRevenueData,
-      userAcquisitionData,
-      engagementData,
-      retentionData,
-      funnelData,
-      kpiMetrics
-    ] = await Promise.all([
-      getRevenueData(startOfMonth, endOfMonth),
-      getRevenueData(startOfLastMonth, endOfLastMonth),
-      getUserAcquisitionData(startOfMonth, endOfMonth),
-      getEngagementMetrics(startOfMonth, endOfMonth),
-      getRetentionMetrics(),
-      getConversionFunnels(),
-      getKPIMetrics()
-    ])
+    // ユーザーデータからKPIを計算
+    const kpiData = await calculateKPIsFromUsers()
 
-    // 売上関連の計算
-    const totalRevenue = revenueData.reduce((sum, item) => sum + item.amount, 0)
-    const lastMonthRevenue = lastMonthRevenueData.reduce((sum, item) => sum + item.amount, 0)
-    const revenueGrowth = lastMonthRevenue > 0 ? ((totalRevenue - lastMonthRevenue) / lastMonthRevenue) * 100 : 0
-
-    const monthlyRecurringRevenue = revenueData
-      .filter(item => item.source === 'subscription')
-      .reduce((sum, item) => sum + item.amount, 0)
-
-    const revenueBySource = revenueData.reduce((acc, item) => {
-      acc[item.source] = (acc[item.source] || 0) + item.amount
-      return acc
-    }, {} as Record<string, number>)
-
-    const revenueByPlan = revenueData.reduce((acc, item) => {
-      acc[item.plan] = (acc[item.plan] || 0) + item.amount
-      return acc
-    }, {} as Record<string, number>)
-
-    // ユーザー関連の計算
-    const totalNewUsers = userAcquisitionData.reduce((sum, item) => sum + item.newUsers, 0)
-    const acquisitionBySource = userAcquisitionData.reduce((acc, item) => {
-      acc[item.source] = (acc[item.source] || 0) + item.newUsers
-      return acc
-    }, {} as Record<string, number>)
-
-    // エンゲージメント関連の計算
-    const totalActiveUsers = new Set(engagementData.map(item => item.userId)).size
-    const averageSessionDuration = engagementData.length > 0 
-      ? engagementData.reduce((sum, item) => sum + item.averageSessionDuration, 0) / engagementData.length 
-      : 0
-
-    // 仮の値（実際のユーザーデータと連携が必要）
-    const totalUsers = 1000 // 実際はuserProfilesから取得
-    const averageRevenuePerUser = totalUsers > 0 ? totalRevenue / totalUsers : 0
-    const customerLifetimeValue = averageRevenuePerUser * 12 // 仮の計算
-    const churnRate = 5.2 // 仮の値
-
-    // コンバージョン関連
-    const trialToPayingConversion = 25.5 // 仮の値
-    const signupToTrialConversion = 68.3 // 仮の値
+    // 月次データの生成（ユーザーデータから）
+    const monthlyRevenue = generateMonthlyRevenueData(kpiData.totalRevenue, startOfMonth, endOfMonth)
+    const userGrowth = generateUserGrowthData(kpiData.newUsersThisMonth, startOfMonth, endOfMonth)
 
     return {
       overview: {
-        totalRevenue,
-        monthlyRecurringRevenue,
-        averageRevenuePerUser,
-        customerLifetimeValue,
-        totalUsers,
-        activeUsers: totalActiveUsers,
-        newUsersThisMonth: totalNewUsers,
-        churnRate
+        totalRevenue: kpiData.totalRevenue,
+        monthlyRecurringRevenue: kpiData.monthlyRecurringRevenue,
+        averageRevenuePerUser: kpiData.averageRevenuePerUser,
+        customerLifetimeValue: kpiData.customerLifetimeValue,
+        totalUsers: kpiData.totalUsers,
+        activeUsers: kpiData.activeUsers,
+        newUsersThisMonth: kpiData.newUsersThisMonth,
+        churnRate: kpiData.churnRate
       },
       revenueMetrics: {
-        monthlyRevenue: revenueData,
-        revenueBySource,
-        revenueByPlan,
-        revenueGrowth
+        monthlyRevenue,
+        revenueBySource: kpiData.revenueBySource,
+        revenueByPlan: kpiData.revenueByPlan,
+        revenueGrowth: kpiData.revenueGrowth
       },
       userMetrics: {
-        userGrowth: userAcquisitionData,
-        acquisitionBySource,
-        userRetention: retentionData,
-        engagementMetrics: engagementData
+        userGrowth: userGrowth,
+        acquisitionBySource: { 'organic': kpiData.newUsersThisMonth },
+        userRetention: [],
+        engagementMetrics: []
       },
       conversionMetrics: {
-        trialToPayingConversion,
-        signupToTrialConversion,
-        funnels: funnelData
+        trialToPayingConversion: kpiData.trialToPayingConversion,
+        signupToTrialConversion: kpiData.signupToTrialConversion,
+        funnels: []
       },
-      kpiTargets: kpiMetrics
+      kpiTargets: []
     }
   } catch (error) {
     console.error('Error fetching KPI dashboard data:', error)
     throw error
   }
+}
+
+// 月次売上データの生成（ユーザーデータから）
+function generateMonthlyRevenueData(totalRevenue: number, startDate: string, endDate: string): RevenueData[] {
+  const data: RevenueData[] = []
+  const start = new Date(startDate)
+  const end = new Date(endDate)
+  
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    const dateStr = d.toISOString().split('T')[0]
+    const dailyRevenue = totalRevenue / 30 // 簡易的な日割り計算
+    
+    data.push({
+      id: `revenue-${dateStr}`,
+      date: dateStr,
+      amount: Math.round(dailyRevenue),
+      source: 'subscription',
+      plan: 'pro',
+      createdAt: new Date().toISOString()
+    })
+  }
+  
+  return data
+}
+
+// ユーザー成長データの生成
+function generateUserGrowthData(totalNewUsers: number, startDate: string, endDate: string): UserAcquisitionData[] {
+  const data: UserAcquisitionData[] = []
+  const start = new Date(startDate)
+  const end = new Date(endDate)
+  
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    const dateStr = d.toISOString().split('T')[0]
+    const dailyUsers = Math.round(totalNewUsers / 30) // 簡易的な日割り計算
+    
+    data.push({
+      id: `acquisition-${dateStr}`,
+      date: dateStr,
+      newUsers: dailyUsers,
+      source: 'organic',
+      createdAt: new Date().toISOString()
+    })
+  }
+  
+  return data
 }
 
 // KPIメトリクスの作成
