@@ -140,6 +140,109 @@ export const getDashboardData = functions.https.onRequest(async (req, res) => {
 })
 
 // =============================================================================
+// ツール側メンテナンス制御API
+// =============================================================================
+export const setToolMaintenanceMode = functions.https.onRequest(async (req, res) => {
+  try {
+    // CORSヘッダーの設定
+    res.set('Access-Control-Allow-Origin', '*')
+    res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE')
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+
+    if (req.method === 'OPTIONS') {
+      res.status(204).send('')
+      return
+    }
+
+    if (req.method !== 'POST') {
+      res.status(405).json({ error: 'Method not allowed' })
+      return
+    }
+
+    const { enabled, message, scheduledStart, scheduledEnd, updatedBy } = req.body
+
+    // メンテナンス設定をFirestoreに保存
+    const maintenanceData = {
+      enabled: enabled || false,
+      message: message || 'システムメンテナンス中です。しばらくお待ちください。',
+      scheduledStart: scheduledStart ? admin.firestore.Timestamp.fromDate(new Date(scheduledStart)) : null,
+      scheduledEnd: scheduledEnd ? admin.firestore.Timestamp.fromDate(new Date(scheduledEnd)) : null,
+      updatedBy: updatedBy || 'admin',
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    }
+
+    // メンテナンス設定を更新（ドキュメントIDを固定）
+    const maintenanceRef = admin.firestore().collection('systemSettings').doc('toolMaintenance')
+    await maintenanceRef.set(maintenanceData, { merge: true })
+
+    console.log('Tool maintenance mode updated:', maintenanceData)
+
+    res.status(200).json({ 
+      success: true, 
+      message: 'ツール側のメンテナンスモードを更新しました',
+      data: maintenanceData
+    })
+  } catch (error) {
+    console.error('Error setting tool maintenance mode:', error)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+export const getToolMaintenanceStatus = functions.https.onRequest(async (req, res) => {
+  try {
+    // CORSヘッダーの設定
+    res.set('Access-Control-Allow-Origin', '*')
+    res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE')
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+
+    if (req.method === 'OPTIONS') {
+      res.status(204).send('')
+      return
+    }
+
+    if (req.method !== 'GET') {
+      res.status(405).json({ error: 'Method not allowed' })
+      return
+    }
+
+    // メンテナンス設定を取得
+    const maintenanceRef = admin.firestore().collection('systemSettings').doc('toolMaintenance')
+    const maintenanceDoc = await maintenanceRef.get()
+
+    if (!maintenanceDoc.exists) {
+      res.status(200).json({
+        success: true,
+        data: {
+          enabled: false,
+          message: '',
+          scheduledStart: null,
+          scheduledEnd: null,
+          updatedBy: '',
+          updatedAt: null
+        }
+      })
+      return
+    }
+
+    const data = maintenanceDoc.data()
+    res.status(200).json({
+      success: true,
+      data: {
+        enabled: data?.enabled || false,
+        message: data?.message || '',
+        scheduledStart: data?.scheduledStart?.toDate?.()?.toISOString() || null,
+        scheduledEnd: data?.scheduledEnd?.toDate?.()?.toISOString() || null,
+        updatedBy: data?.updatedBy || '',
+        updatedAt: data?.updatedAt?.toDate?.()?.toISOString() || null
+      }
+    })
+  } catch (error) {
+    console.error('Error getting tool maintenance status:', error)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+// =============================================================================
 // エラー監視API
 // =============================================================================
 export const reportError = functions.https.onRequest(async (req, res) => {

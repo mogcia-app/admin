@@ -1,12 +1,13 @@
 'use client'
 
-import React, { useState } from 'react'
-import { Shield, Loader2, RefreshCw, Activity, AlertTriangle } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { Shield, Loader2, RefreshCw, Activity, AlertTriangle, Wrench, Clock, Calendar } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { FeatureControlCard } from '@/components/access-control/feature-control-card'
 import { SystemStatusCard } from '@/components/access-control/system-status-card'
 import { useAccessControl, useSystemStatus } from '@/hooks/useAccessControl'
+import { API_ENDPOINTS, apiPost, apiGet } from '@/lib/api-config'
 
 export default function AccessControlPage() {
   const { 
@@ -27,12 +28,73 @@ export default function AccessControlPage() {
     refreshSystemStatus 
   } = useSystemStatus()
   
-  const [activeTab, setActiveTab] = useState<'features' | 'system'>('features')
+  const [activeTab, setActiveTab] = useState<'features' | 'system' | 'tool'>('features')
+  
+  // ツール側メンテナンス状態
+  const [toolMaintenance, setToolMaintenance] = useState({
+    enabled: false,
+    message: '',
+    scheduledStart: '',
+    scheduledEnd: '',
+    updatedBy: '',
+    updatedAt: null
+  })
+  const [toolMaintenanceLoading, setToolMaintenanceLoading] = useState(false)
+  const [toolMaintenanceError, setToolMaintenanceError] = useState<string | null>(null)
 
+
+  // ツール側メンテナンス状態を取得
+  const fetchToolMaintenanceStatus = async () => {
+    try {
+      setToolMaintenanceLoading(true)
+      setToolMaintenanceError(null)
+      const response = await apiGet(API_ENDPOINTS.toolMaintenance.getStatus)
+      if (response.success) {
+        setToolMaintenance(response.data)
+      }
+    } catch (err) {
+      console.error('Error fetching tool maintenance status:', err)
+      setToolMaintenanceError('ツール側メンテナンス状態の取得に失敗しました')
+    } finally {
+      setToolMaintenanceLoading(false)
+    }
+  }
+
+  // ツール側メンテナンスモードを設定
+  const setToolMaintenanceMode = async (enabled: boolean, message?: string, scheduledStart?: string, scheduledEnd?: string) => {
+    try {
+      setToolMaintenanceLoading(true)
+      setToolMaintenanceError(null)
+      
+      const response = await apiPost(API_ENDPOINTS.toolMaintenance.setMode, {
+        enabled,
+        message: message || 'システムメンテナンス中です。しばらくお待ちください。',
+        scheduledStart,
+        scheduledEnd,
+        updatedBy: 'admin'
+      })
+      
+      if (response.success) {
+        setToolMaintenance(response.data)
+        alert('ツール側のメンテナンスモードを更新しました')
+      }
+    } catch (err) {
+      console.error('Error setting tool maintenance mode:', err)
+      setToolMaintenanceError('ツール側メンテナンスモードの設定に失敗しました')
+    } finally {
+      setToolMaintenanceLoading(false)
+    }
+  }
+
+  // 初期化時にツール側メンテナンス状態を取得
+  useEffect(() => {
+    fetchToolMaintenanceStatus()
+  }, [])
 
   const handleRefresh = () => {
     refreshAccessControls()
     refreshSystemStatus()
+    fetchToolMaintenanceStatus()
   }
 
   // 統計情報の計算
@@ -47,7 +109,8 @@ export default function AccessControlPage() {
 
   const tabs = [
     { id: 'features', label: '機能制御', icon: '⚙️' },
-    { id: 'system', label: 'システム状況', icon: '🖥️' }
+    { id: 'system', label: 'システム状況', icon: '🖥️' },
+    { id: 'tool', label: 'ツール側メンテナンス', icon: '🔧' }
   ]
 
   return (
@@ -204,6 +267,137 @@ export default function AccessControlPage() {
               onRefresh={refreshSystemStatus}
               onUpdateStatus={updateServiceStatus}
             />
+          </div>
+        )}
+
+        {activeTab === 'tool' && (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-xl font-semibold mb-4">ツール側メンテナンス制御</h2>
+              <p className="text-muted-foreground mb-6">
+                別プロジェクト（ツール側）のメンテナンスモードを制御します。
+              </p>
+            </div>
+
+            {/* 現在の状態 */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Wrench className="h-5 w-5" />
+                  現在の状態
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {toolMaintenanceLoading ? (
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>状態を取得中...</span>
+                  </div>
+                ) : toolMaintenanceError ? (
+                  <div className="text-red-600">
+                    <p>{toolMaintenanceError}</p>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={fetchToolMaintenanceStatus}
+                      className="mt-2"
+                    >
+                      再試行
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">メンテナンスモード</span>
+                      <div className={`px-3 py-1 rounded-full text-sm font-medium ${
+                        toolMaintenance.enabled 
+                          ? 'bg-red-100 text-red-800' 
+                          : 'bg-green-100 text-green-800'
+                      }`}>
+                        {toolMaintenance.enabled ? '有効' : '無効'}
+                      </div>
+                    </div>
+                    
+                    {toolMaintenance.enabled && toolMaintenance.message && (
+                      <div className="p-3 bg-yellow-50 border border-yellow-200 rounded">
+                        <p className="text-sm text-yellow-800">
+                          <strong>メッセージ:</strong> {toolMaintenance.message}
+                        </p>
+                      </div>
+                    )}
+                    
+                    {toolMaintenance.scheduledStart && (
+                      <div className="text-sm text-muted-foreground">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4" />
+                          <span>開始予定: {new Date(toolMaintenance.scheduledStart).toLocaleString('ja-JP')}</span>
+                        </div>
+                        {toolMaintenance.scheduledEnd && (
+                          <div className="flex items-center gap-2 mt-1">
+                            <Clock className="h-4 w-4" />
+                            <span>終了予定: {new Date(toolMaintenance.scheduledEnd).toLocaleString('ja-JP')}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    {toolMaintenance.updatedBy && (
+                      <div className="text-sm text-muted-foreground">
+                        最終更新: {toolMaintenance.updatedBy} - {toolMaintenance.updatedAt ? new Date(toolMaintenance.updatedAt).toLocaleString('ja-JP') : '不明'}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* メンテナンス制御 */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Shield className="h-5 w-5" />
+                  メンテナンス制御
+                </CardTitle>
+                <CardDescription>
+                  ツール側のログインを制御するためのメンテナンスモードを設定します
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex gap-4">
+                  <Button
+                    onClick={() => setToolMaintenanceMode(true)}
+                    disabled={toolMaintenanceLoading || toolMaintenance.enabled}
+                    className="bg-red-600 hover:bg-red-700"
+                  >
+                    {toolMaintenanceLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <Wrench className="h-4 w-4 mr-2" />
+                    )}
+                    メンテナンス開始
+                  </Button>
+                  
+                  <Button
+                    onClick={() => setToolMaintenanceMode(false)}
+                    disabled={toolMaintenanceLoading || !toolMaintenance.enabled}
+                    variant="outline"
+                    className="border-green-600 text-green-600 hover:bg-green-50"
+                  >
+                    {toolMaintenanceLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <Activity className="h-4 w-4 mr-2" />
+                    )}
+                    メンテナンス終了
+                  </Button>
+                </div>
+                
+                <div className="text-sm text-muted-foreground">
+                  <p>• <strong>メンテナンス開始:</strong> ツール側へのログインを無効にします</p>
+                  <p>• <strong>メンテナンス終了:</strong> ツール側へのログインを有効にします</p>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         )}
       </div>

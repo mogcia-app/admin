@@ -46,6 +46,12 @@ export const API_ENDPOINTS = {
   monitoring: {
     reportError: `${FUNCTIONS_BASE_URL}/reportError`,
   },
+  
+  // ツール側メンテナンス制御
+  toolMaintenance: {
+    setMode: `${FUNCTIONS_BASE_URL}/setToolMaintenanceMode`,
+    getStatus: `${FUNCTIONS_BASE_URL}/getToolMaintenanceStatus`,
+  },
 }
 
 // HTTP ヘルパー関数

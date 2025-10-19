@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getNotificationStats = exports.deleteNotification = exports.updateNotification = exports.createNotification = exports.getNotifications = exports.getConversionFunnel = exports.getRetentionMetrics = exports.getEngagementMetrics = exports.getUserAcquisitionData = exports.getRevenueData = exports.getKPIMetrics = exports.incrementPromptUsage = exports.deletePrompt = exports.updatePrompt = exports.createPrompt = exports.getPrompts = exports.getDashboardData = exports.createUser = exports.getUsers = void 0;
+exports.getNotificationStats = exports.deleteNotification = exports.updateNotification = exports.createNotification = exports.getNotifications = exports.getConversionFunnel = exports.getRetentionMetrics = exports.getEngagementMetrics = exports.getUserAcquisitionData = exports.getRevenueData = exports.getKPIMetrics = exports.incrementPromptUsage = exports.deletePrompt = exports.updatePrompt = exports.createPrompt = exports.getPrompts = exports.reportError = exports.getToolMaintenanceStatus = exports.setToolMaintenanceMode = exports.getDashboardData = exports.createUser = exports.getUsers = void 0;
 const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
 const cors_1 = __importDefault(require("cors"));
@@ -154,6 +154,160 @@ exports.getDashboardData = functions.https.onRequest(async (req, res) => {
     }
     catch (error) {
         console.error('Error getting dashboard data:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+// =============================================================================
+// ツール側メンテナンス制御API
+// =============================================================================
+exports.setToolMaintenanceMode = functions.https.onRequest(async (req, res) => {
+    try {
+        // CORSヘッダーの設定
+        res.set('Access-Control-Allow-Origin', '*');
+        res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
+        res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+        if (req.method === 'OPTIONS') {
+            res.status(204).send('');
+            return;
+        }
+        if (req.method !== 'POST') {
+            res.status(405).json({ error: 'Method not allowed' });
+            return;
+        }
+        const { enabled, message, scheduledStart, scheduledEnd, updatedBy } = req.body;
+        // メンテナンス設定をFirestoreに保存
+        const maintenanceData = {
+            enabled: enabled || false,
+            message: message || 'システムメンテナンス中です。しばらくお待ちください。',
+            scheduledStart: scheduledStart ? admin.firestore.Timestamp.fromDate(new Date(scheduledStart)) : null,
+            scheduledEnd: scheduledEnd ? admin.firestore.Timestamp.fromDate(new Date(scheduledEnd)) : null,
+            updatedBy: updatedBy || 'admin',
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        };
+        // メンテナンス設定を更新（ドキュメントIDを固定）
+        const maintenanceRef = admin.firestore().collection('systemSettings').doc('toolMaintenance');
+        await maintenanceRef.set(maintenanceData, { merge: true });
+        console.log('Tool maintenance mode updated:', maintenanceData);
+        res.status(200).json({
+            success: true,
+            message: 'ツール側のメンテナンスモードを更新しました',
+            data: maintenanceData
+        });
+    }
+    catch (error) {
+        console.error('Error setting tool maintenance mode:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+exports.getToolMaintenanceStatus = functions.https.onRequest(async (req, res) => {
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j;
+    try {
+        // CORSヘッダーの設定
+        res.set('Access-Control-Allow-Origin', '*');
+        res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
+        res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+        if (req.method === 'OPTIONS') {
+            res.status(204).send('');
+            return;
+        }
+        if (req.method !== 'GET') {
+            res.status(405).json({ error: 'Method not allowed' });
+            return;
+        }
+        // メンテナンス設定を取得
+        const maintenanceRef = admin.firestore().collection('systemSettings').doc('toolMaintenance');
+        const maintenanceDoc = await maintenanceRef.get();
+        if (!maintenanceDoc.exists) {
+            res.status(200).json({
+                success: true,
+                data: {
+                    enabled: false,
+                    message: '',
+                    scheduledStart: null,
+                    scheduledEnd: null,
+                    updatedBy: '',
+                    updatedAt: null
+                }
+            });
+            return;
+        }
+        const data = maintenanceDoc.data();
+        res.status(200).json({
+            success: true,
+            data: {
+                enabled: (data === null || data === void 0 ? void 0 : data.enabled) || false,
+                message: (data === null || data === void 0 ? void 0 : data.message) || '',
+                scheduledStart: ((_c = (_b = (_a = data === null || data === void 0 ? void 0 : data.scheduledStart) === null || _a === void 0 ? void 0 : _a.toDate) === null || _b === void 0 ? void 0 : _b.call(_a)) === null || _c === void 0 ? void 0 : _c.toISOString()) || null,
+                scheduledEnd: ((_f = (_e = (_d = data === null || data === void 0 ? void 0 : data.scheduledEnd) === null || _d === void 0 ? void 0 : _d.toDate) === null || _e === void 0 ? void 0 : _e.call(_d)) === null || _f === void 0 ? void 0 : _f.toISOString()) || null,
+                updatedBy: (data === null || data === void 0 ? void 0 : data.updatedBy) || '',
+                updatedAt: ((_j = (_h = (_g = data === null || data === void 0 ? void 0 : data.updatedAt) === null || _g === void 0 ? void 0 : _g.toDate) === null || _h === void 0 ? void 0 : _h.call(_g)) === null || _j === void 0 ? void 0 : _j.toISOString()) || null
+            }
+        });
+    }
+    catch (error) {
+        console.error('Error getting tool maintenance status:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+// =============================================================================
+// エラー監視API
+// =============================================================================
+exports.reportError = functions.https.onRequest(async (req, res) => {
+    try {
+        // CORSヘッダーの設定
+        res.set('Access-Control-Allow-Origin', '*');
+        res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
+        res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+        if (req.method === 'OPTIONS') {
+            res.status(204).send('');
+            return;
+        }
+        if (req.method !== 'POST') {
+            res.status(405).json({ error: 'Method not allowed' });
+            return;
+        }
+        const { level, message, source, stack, metadata } = req.body;
+        // 必須フィールドの検証
+        if (!level || !message || !source) {
+            res.status(400).json({
+                error: 'Missing required fields: level, message, source are required'
+            });
+            return;
+        }
+        // エラーレベルの検証
+        const validLevels = ['fatal', 'error', 'warn', 'info'];
+        if (!validLevels.includes(level)) {
+            res.status(400).json({
+                error: 'Invalid level. Must be one of: fatal, error, warn, info'
+            });
+            return;
+        }
+        // Firestoreにエラーログを保存
+        const errorLog = {
+            level,
+            message,
+            source,
+            stack: stack || null,
+            metadata: metadata || {},
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            resolved: false,
+            count: 1
+        };
+        const docRef = await admin.firestore().collection('errorLogs').add(errorLog);
+        console.log('Error reported:', {
+            id: docRef.id,
+            level,
+            message,
+            source
+        });
+        res.status(201).json({
+            success: true,
+            id: docRef.id,
+            message: 'Error reported successfully'
+        });
+    }
+    catch (error) {
+        console.error('Error reporting error:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
