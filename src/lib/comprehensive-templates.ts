@@ -20,30 +20,75 @@ export const PAGE_TEMPLATES = {
   // ユーザー管理ページ
   users: {
     search: {
-      keywords: ['ユーザー', '顧客', '検索', '探す', 'user', 'customer', 'search'],
+      keywords: ['ユーザー', '顧客', '利用者', '検索', '探す', 'user', 'customer', 'search', '一覧', 'リスト', '表示', 'show', 'list'],
       responses: {
         general: async (message: string) => {
           const users = await userService.getUsers()
           const searchTerms = extractSearchTerms(message)
+          const lowerMessage = message.toLowerCase()
           
-          if (searchTerms.length === 0) {
-            return `👥 **ユーザー一覧** (${users.length}件)\n\n${users.slice(0, 10).map(user => 
-              `**${user.name}**\n` +
-              `📧 ${user.email}\n` +
-              `👤 ${user.role || 'user'}\n` +
-              `📅 登録日: ${new Date(user.createdAt).toLocaleDateString('ja-JP')}\n` +
-              `🟢 ステータス: ${user.isActive ? 'アクティブ' : '非アクティブ'}\n` +
-              `${user.businessInfo?.industry ? `🏢 業界: ${user.businessInfo.industry}\n` : ''}`
-            ).join('\n---\n')}\n\n${users.length > 10 ? `\n*他に${users.length - 10}件のユーザーがあります*` : ''}`
+          // ステータス別の検索
+          const statusKeywords = {
+            'アクティブ': 'active',
+            '非アクティブ': 'inactive', 
+            '停止中': 'suspended',
+            'active': 'active',
+            'inactive': 'inactive',
+            'suspended': 'suspended'
           }
           
-          const filteredUsers = users.filter(user => {
-            const searchText = `${user.name} ${user.email} ${user.role || ''} ${user.businessInfo?.industry || ''}`.toLowerCase()
-            return searchTerms.some(term => searchText.includes(term.toLowerCase()))
-          })
+          // 契約タイプ別の検索
+          const contractKeywords = {
+            '年間契約': 'annual',
+            'お試し契約': 'trial',
+            'annual': 'annual',
+            'trial': 'trial'
+          }
+          
+          // 利用形態別の検索
+          const usageKeywords = {
+            'チーム': 'team',
+            'ソロ': 'solo',
+            'team': 'team',
+            'solo': 'solo'
+          }
+          
+          let filteredUsers = users
+          
+          // ステータスフィルター
+          const statusFilter = Object.keys(statusKeywords).find(keyword => 
+            lowerMessage.includes(keyword)
+          )
+          if (statusFilter) {
+            filteredUsers = filteredUsers.filter(user => user.status === statusKeywords[statusFilter as keyof typeof statusKeywords])
+          }
+          
+          // 契約タイプフィルター
+          const contractFilter = Object.keys(contractKeywords).find(keyword => 
+            lowerMessage.includes(keyword)
+          )
+          if (contractFilter) {
+            filteredUsers = filteredUsers.filter(user => user.contractType === contractKeywords[contractFilter as keyof typeof contractKeywords])
+          }
+          
+          // 利用形態フィルター
+          const usageFilter = Object.keys(usageKeywords).find(keyword => 
+            lowerMessage.includes(keyword)
+          )
+          if (usageFilter) {
+            filteredUsers = filteredUsers.filter(user => user.usageType === usageKeywords[usageFilter as keyof typeof usageKeywords])
+          }
+          
+          // テキスト検索
+          if (searchTerms.length > 0) {
+            filteredUsers = filteredUsers.filter(user => {
+              const searchText = `${user.name} ${user.email} ${user.role || ''} ${user.businessInfo?.industry || ''} ${user.businessInfo?.description || ''}`.toLowerCase()
+              return searchTerms.some(term => searchText.includes(term.toLowerCase()))
+            })
+          }
           
           if (filteredUsers.length === 0) {
-            return `🔍 **ユーザー検索結果**\n\n検索条件に一致するユーザーが見つかりませんでした。\n\n**検索のヒント:**\n• 名前、メールアドレス、役職で検索できます\n• 部分一致でも検索可能です\n• より具体的なキーワードをお試しください`
+            return `🔍 **ユーザー検索結果**\n\n検索条件に一致するユーザーが見つかりませんでした。\n\n**検索のヒント:**\n• 名前、メールアドレス、業界で検索\n• ステータス: アクティブ、非アクティブ、停止中\n• 契約タイプ: 年間契約、お試し契約\n• 利用形態: チーム、ソロ\n• 部分一致でも検索可能`
           }
           
           const userList = filteredUsers.slice(0, 10).map(user => 
@@ -51,10 +96,20 @@ export const PAGE_TEMPLATES = {
             `📧 ${user.email}\n` +
             `👤 ${user.role || 'user'}\n` +
             `📅 登録日: ${new Date(user.createdAt).toLocaleDateString('ja-JP')}\n` +
-            `🟢 ステータス: ${user.isActive ? 'アクティブ' : '非アクティブ'}\n`
+            `🟢 ステータス: ${user.isActive ? 'アクティブ' : '非アクティブ'}\n` +
+            `📋 契約: ${user.contractType === 'annual' ? '年間契約' : 'お試し契約'}\n` +
+            `👥 形態: ${user.usageType === 'team' ? 'チーム' : 'ソロ'}\n` +
+            `${user.businessInfo?.industry ? `🏢 業界: ${user.businessInfo.industry}\n` : ''}` +
+            `${user.businessInfo?.description ? `📝 事業内容: ${user.businessInfo.description.substring(0, 50)}...\n` : ''}`
           ).join('\n---\n')
           
-          return `🔍 **ユーザー検索結果** (${filteredUsers.length}件)\n\n**検索キーワード:** "${searchTerms.join(' ')}"\n\n${userList}\n\n${filteredUsers.length > 10 ? `\n*他に${filteredUsers.length - 10}件の結果があります*` : ''}`
+          const searchInfo = []
+          if (statusFilter) searchInfo.push(`ステータス: ${statusFilter}`)
+          if (contractFilter) searchInfo.push(`契約: ${contractFilter}`)
+          if (usageFilter) searchInfo.push(`形態: ${usageFilter}`)
+          if (searchTerms.length > 0) searchInfo.push(`キーワード: "${searchTerms.join(' ')}"`)
+          
+          return `🔍 **ユーザー検索結果** (${filteredUsers.length}件)\n\n${searchInfo.length > 0 ? `**検索条件:** ${searchInfo.join(', ')}\n\n` : ''}${userList}\n\n${filteredUsers.length > 10 ? `\n*他に${filteredUsers.length - 10}件の結果があります*` : ''}\n\n**詳細検索:**\n• ユーザー管理ページでより詳細な検索が可能\n• フィルター機能で絞り込み検索\n• ソート機能で並び替え`
         }
       }
     },
