@@ -142,7 +142,7 @@ export function ChatInterface({
       </div>
 
       {/* メッセージエリア */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-6 space-y-6">
         {chat.messages.length === 0 ? (
           <div className="text-center py-8">
             <Bot className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
@@ -281,7 +281,7 @@ export function ChatInterface({
       </div>
 
       {/* 入力エリア */}
-      <div className="border-t border-border p-4">
+      <div className="border-t border-border p-6">
         <div className="flex gap-2">
           <div className="flex-1">
             <Textarea

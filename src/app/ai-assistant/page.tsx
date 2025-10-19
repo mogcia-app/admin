@@ -102,7 +102,7 @@ export default function AIAssistantPage() {
   }
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex bg-gray-50 dark:bg-gray-900">
+    <div className="h-screen flex bg-gray-50 dark:bg-gray-900">
       {/* サイドバー */}
       <div className="w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col">
         <ChatSidebar
@@ -119,7 +119,7 @@ export default function AIAssistantPage() {
       {/* メインコンテンツ */}
       <div className="flex-1 flex flex-col">
         {/* ヘッダー */}
-        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
@@ -214,7 +214,7 @@ export default function AIAssistantPage() {
         </div>
 
         {/* 統計情報 */}
-        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-3">
           <div className="grid gap-4 md:grid-cols-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
