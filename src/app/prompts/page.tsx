@@ -1,13 +1,12 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Plus, Search, Edit, Trash2, Play, Copy, Eye, Loader2, Database } from 'lucide-react'
+import { Plus, Search, Edit, Trash2, Play, Copy, Eye, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { PromptModal } from '@/components/prompts/prompt-modal'
 import { PromptTemplate } from '@/types'
 import { usePrompts, usePromptStats } from '@/hooks/usePrompts'
-import { seedPromptData } from '@/lib/prompts'
 
 
 export default function PromptsPage() {
@@ -19,7 +18,6 @@ export default function PromptsPage() {
   const [selectedPrompt, setSelectedPrompt] = useState<PromptTemplate | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
-  const [seeding, setSeeding] = useState(false)
 
   // 検索とフィルタリング
   useEffect(() => {
@@ -104,17 +102,6 @@ export default function PromptsPage() {
     }
   }
 
-  const handleSeedData = async () => {
-    try {
-      setSeeding(true)
-      await seedPromptData()
-      alert('サンプルプロンプトデータを作成しました！')
-    } catch (err) {
-      alert('データの作成中にエラーが発生しました: ' + (err instanceof Error ? err.message : '不明なエラー'))
-    } finally {
-      setSeeding(false)
-    }
-  }
 
   const handleCopyPrompt = (prompt: PromptTemplate) => {
     navigator.clipboard.writeText(prompt.prompt)
@@ -147,23 +134,6 @@ export default function PromptsPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button
-            onClick={handleSeedData}
-            disabled={seeding}
-            variant="outline"
-          >
-            {seeding ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                作成中...
-              </>
-            ) : (
-              <>
-                <Database className="h-4 w-4 mr-2" />
-                サンプルデータ作成
-              </>
-            )}
-          </Button>
           <Button onClick={() => setShowCreateModal(true)}>
             <Plus className="h-4 w-4 mr-2" />
             新規作成

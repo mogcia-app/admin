@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Users, Plus, Search, Edit, Trash2, Eye, Database, Loader2, Calendar, DollarSign, Building } from 'lucide-react'
+import { Users, Plus, Search, Edit, Trash2, Eye, Loader2, Calendar, DollarSign, Building } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { UserModal } from '@/components/users/user-modal'
@@ -34,7 +34,6 @@ export default function UsersPage() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState(false)
-  const [seeding, setSeeding] = useState(false)
 
   // 検索とフィルタリング
   useEffect(() => {
@@ -175,17 +174,6 @@ export default function UsersPage() {
     setShowEditModal(true)
   }
 
-  const handleSeedData = async () => {
-    try {
-      setSeeding(true)
-      // サンプルデータ作成機能は削除されました
-      alert('サンプルデータ作成機能は削除されました。手動でユーザーを追加してください。')
-    } catch (err) {
-      alert('データの作成中にエラーが発生しました: ' + (err instanceof Error ? err.message : '不明なエラー'))
-    } finally {
-      setSeeding(false)
-    }
-  }
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ja-JP', {
@@ -215,23 +203,6 @@ export default function UsersPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button
-            onClick={handleSeedData}
-            disabled={seeding}
-            variant="outline"
-          >
-            {seeding ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                作成中...
-              </>
-            ) : (
-              <>
-                <Database className="h-4 w-4 mr-2" />
-                サンプルデータ作成
-              </>
-            )}
-          </Button>
           <Button onClick={() => setShowCreateModal(true)}>
             <Plus className="h-4 w-4 mr-2" />
             新規利用者追加

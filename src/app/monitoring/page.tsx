@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { AlertTriangle, TrendingUp, Database, Loader2, RefreshCw, BarChart3, DollarSign, Briefcase, CheckCircle } from 'lucide-react'
+import { AlertTriangle, TrendingUp, Loader2, RefreshCw, BarChart3, DollarSign, Briefcase, CheckCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ErrorMonitor } from '@/components/monitoring/error-monitor'
@@ -9,7 +9,6 @@ import { SalesTracker } from '@/components/monitoring/sales-tracker'
 import { PieChart } from '@/components/charts/pie-chart'
 import { BarChart } from '@/components/charts/bar-chart'
 import { useErrorLogs, useSalesProgress, useDeals, useErrorStats, useSalesStats } from '@/hooks/useMonitoring'
-import { seedMonitoringData } from '@/lib/monitoring'
 
 export default function MonitoringPage() {
   const { 
@@ -49,27 +48,8 @@ export default function MonitoringPage() {
     refreshStats: refreshSalesStats 
   } = useSalesStats()
 
-  const [seeding, setSeeding] = useState(false)
   const [activeView, setActiveView] = useState<'overview' | 'errors' | 'sales'>('overview')
 
-  const handleSeedData = async () => {
-    try {
-      setSeeding(true)
-      await seedMonitoringData()
-      alert('サンプル監視データを作成しました！')
-      
-      // 全データを更新
-      refreshErrorLogs()
-      refreshSalesProgress()
-      refreshDeals()
-      refreshErrorStats()
-      refreshSalesStats()
-    } catch (err) {
-      alert('データの作成中にエラーが発生しました: ' + (err instanceof Error ? err.message : '不明なエラー'))
-    } finally {
-      setSeeding(false)
-    }
-  }
 
   const handleRefresh = () => {
     refreshErrorLogs()
@@ -126,23 +106,6 @@ export default function MonitoringPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button
-            onClick={handleSeedData}
-            disabled={seeding}
-            variant="outline"
-          >
-            {seeding ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                作成中...
-              </>
-            ) : (
-              <>
-                <Database className="h-4 w-4 mr-2" />
-                サンプルデータ作成
-              </>
-            )}
-          </Button>
           <Button onClick={handleRefresh} variant="outline">
             <RefreshCw className="h-4 w-4 mr-2" />
             更新

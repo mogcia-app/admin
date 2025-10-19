@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { RefreshCw, Database, Loader2, Calendar, Download, Filter } from 'lucide-react'
+import { RefreshCw, Loader2, Calendar, Download, Filter } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { KPIOverview } from '@/components/kpi/kpi-overview'
@@ -9,26 +9,12 @@ import { RevenueChart } from '@/components/kpi/revenue-chart'
 import { UserAcquisitionChart } from '@/components/kpi/user-acquisition-chart'
 import { KPIMetrics } from '@/components/kpi/kpi-metrics'
 import { useKPIDashboard, useKPIMetrics } from '@/hooks/useKPI'
-import { seedKPIData } from '@/lib/kpi'
 
 export default function KPIPage() {
   const { dashboardData, loading: dashboardLoading, error: dashboardError, refreshData } = useKPIDashboard()
   const { metrics, loading: metricsLoading, error: metricsError } = useKPIMetrics()
-  const [seeding, setSeeding] = useState(false)
   const [activeTab, setActiveTab] = useState<'overview' | 'revenue' | 'users' | 'metrics'>('overview')
 
-  const handleSeedData = async () => {
-    try {
-      setSeeding(true)
-      await seedKPIData()
-      alert('サンプルKPIデータを作成しました！')
-      refreshData() // データを再取得
-    } catch (err) {
-      alert('データの作成中にエラーが発生しました: ' + (err instanceof Error ? err.message : '不明なエラー'))
-    } finally {
-      setSeeding(false)
-    }
-  }
 
   const handleRefresh = () => {
     refreshData()
@@ -57,23 +43,6 @@ export default function KPIPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button
-            onClick={handleSeedData}
-            disabled={seeding}
-            variant="outline"
-          >
-            {seeding ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                作成中...
-              </>
-            ) : (
-              <>
-                <Database className="h-4 w-4 mr-2" />
-                サンプルデータ作成
-              </>
-            )}
-          </Button>
           <Button onClick={handleRefresh} variant="outline">
             <RefreshCw className="h-4 w-4 mr-2" />
             更新

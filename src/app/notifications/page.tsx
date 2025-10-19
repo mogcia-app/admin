@@ -1,14 +1,13 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Plus, Search, Filter, Database, Loader2, BarChart3, RefreshCw } from 'lucide-react'
+import { Plus, Search, Filter, Loader2, BarChart3, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { NotificationModal } from '@/components/notifications/notification-modal'
 import { NotificationList } from '@/components/notifications/notification-list'
 import { Notification } from '@/types'
 import { useNotifications, useNotificationStats } from '@/hooks/useNotifications'
-import { seedNotificationData } from '@/lib/notifications'
 
 export default function NotificationsPage() {
   const { 
@@ -31,7 +30,6 @@ export default function NotificationsPage() {
   const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
-  const [seeding, setSeeding] = useState(false)
 
   // 検索とフィルタリング
   React.useEffect(() => {
@@ -134,18 +132,6 @@ export default function NotificationsPage() {
     }
   }
 
-  const handleSeedData = async () => {
-    try {
-      setSeeding(true)
-      await seedNotificationData()
-      alert('サンプルお知らせデータを作成しました！')
-      refreshNotifications()
-    } catch (err) {
-      alert('データの作成中にエラーが発生しました: ' + (err instanceof Error ? err.message : '不明なエラー'))
-    } finally {
-      setSeeding(false)
-    }
-  }
 
   const openEditModal = (notification: Notification) => {
     setSelectedNotification(notification)
@@ -164,23 +150,6 @@ export default function NotificationsPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button
-            onClick={handleSeedData}
-            disabled={seeding}
-            variant="outline"
-          >
-            {seeding ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                作成中...
-              </>
-            ) : (
-              <>
-                <Database className="h-4 w-4 mr-2" />
-                サンプルデータ作成
-              </>
-            )}
-          </Button>
           <Button onClick={refreshNotifications} variant="outline">
             <RefreshCw className="h-4 w-4 mr-2" />
             更新

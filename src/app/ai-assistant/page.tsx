@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Bot, Database, Loader2, RefreshCw, MessageSquare, Sparkles, Key, CheckCircle, XCircle } from 'lucide-react'
+import { Bot, Loader2, RefreshCw, MessageSquare, Sparkles, Key, CheckCircle, XCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -9,7 +9,6 @@ import { ChatSidebar } from '@/components/ai-assistant/chat-sidebar'
 import { ChatInterface } from '@/components/ai-assistant/chat-interface'
 import { AICapabilities } from '@/components/ai-assistant/ai-capabilities'
 import { useAIChats, useAIChat, useAICapabilities } from '@/hooks/useAIAssistant'
-import { seedAIData } from '@/lib/ai-assistant'
 import { sendChatMessage, isAIAvailable } from '@/lib/ai-client'
 
 export default function AIAssistantPage() {
@@ -42,7 +41,6 @@ export default function AIAssistantPage() {
     error: capabilitiesError 
   } = useAICapabilities()
   
-  const [seeding, setSeeding] = useState(false)
   const [activeView, setActiveView] = useState<'chat' | 'capabilities'>('chat')
   const [aiAvailable, setAiAvailable] = useState(isAIAvailable())
   const [apiKey, setApiKey] = useState('')
@@ -61,18 +59,6 @@ export default function AIAssistantPage() {
     }
   }
 
-  const handleSeedData = async () => {
-    try {
-      setSeeding(true)
-      await seedAIData()
-      alert('サンプルAIデータを作成しました！')
-      refreshChats()
-    } catch (err) {
-      alert('データの作成中にエラーが発生しました: ' + (err instanceof Error ? err.message : '不明なエラー'))
-    } finally {
-      setSeeding(false)
-    }
-  }
 
   const handleRefresh = () => {
     refreshChats()
@@ -223,20 +209,6 @@ export default function AIAssistantPage() {
             >
               <RefreshCw className={`h-4 w-4 mr-2 ${chatsLoading ? 'animate-spin' : ''}`} />
               更新
-            </Button>
-            <Button
-              onClick={handleSeedData}
-              variant="outline"
-              size="sm"
-              disabled={seeding}
-              className="bg-white dark:bg-gray-700"
-            >
-              {seeding ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Database className="h-4 w-4 mr-2" />
-              )}
-              {seeding ? '作成中...' : 'サンプルデータ作成'}
             </Button>
           </div>
         </div>

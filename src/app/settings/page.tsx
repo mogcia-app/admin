@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Settings, User, Shield, Bell, Database, Loader2, RefreshCw, Search, Filter } from 'lucide-react'
+import { Settings, User, Shield, Bell, Loader2, RefreshCw, Search, Filter } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -9,7 +9,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { SettingItem } from '@/components/settings/setting-item'
 import { ProfileSettings } from '@/components/settings/profile-settings'
 import { useSystemSettings, useAdminProfile, useSettingsStats } from '@/hooks/useSettings'
-import { seedSettingsData } from '@/lib/settings'
 
 export default function SettingsPage() {
   const adminId = 'admin_001' // 実際は認証されたユーザーのID
@@ -32,24 +31,10 @@ export default function SettingsPage() {
   
   const stats = useSettingsStats()
   
-  const [seeding, setSeeding] = useState(false)
   const [activeView, setActiveView] = useState<'profile' | 'system'>('profile')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
 
-  const handleSeedData = async () => {
-    try {
-      setSeeding(true)
-      await seedSettingsData()
-      alert('サンプル設定データを作成しました！')
-      refreshSettings()
-      refreshProfile()
-    } catch (err) {
-      alert('データの作成中にエラーが発生しました: ' + (err instanceof Error ? err.message : '不明なエラー'))
-    } finally {
-      setSeeding(false)
-    }
-  }
 
   const handleRefresh = () => {
     refreshSettings()
@@ -119,23 +104,6 @@ export default function SettingsPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button
-            onClick={handleSeedData}
-            disabled={seeding}
-            variant="outline"
-          >
-            {seeding ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                作成中...
-              </>
-            ) : (
-              <>
-                <Database className="h-4 w-4 mr-2" />
-                サンプルデータ作成
-              </>
-            )}
-          </Button>
           <Button onClick={handleRefresh} variant="outline">
             <RefreshCw className="h-4 w-4 mr-2" />
             更新
@@ -234,11 +202,8 @@ export default function SettingsPage() {
                   <User className="h-12 w-12 text-muted-foreground mb-4" />
                   <h3 className="text-lg font-semibold mb-2">プロフィールが見つかりません</h3>
                   <p className="text-muted-foreground text-center mb-4">
-                    管理者プロフィールを作成するには、サンプルデータを作成してください。
+                    管理者プロフィールが見つかりません。手動でプロフィールを作成してください。
                   </p>
-                  <Button onClick={handleSeedData} disabled={seeding}>
-                    {seeding ? 'データ作成中...' : 'サンプルデータを作成'}
-                  </Button>
                 </CardContent>
               </Card>
             )}
@@ -321,14 +286,9 @@ export default function SettingsPage() {
                   <p className="text-muted-foreground text-center mb-4">
                     {searchQuery || selectedCategory !== 'all' 
                       ? '検索条件に一致する設定がありません。' 
-                      : 'システム設定を作成するには、サンプルデータを作成してください。'
+                      : 'システム設定がありません。手動で設定を作成してください。'
                     }
                   </p>
-                  {!searchQuery && selectedCategory === 'all' && (
-                    <Button onClick={handleSeedData} disabled={seeding}>
-                      {seeding ? 'データ作成中...' : 'サンプルデータを作成'}
-                    </Button>
-                  )}
                 </CardContent>
               </Card>
             )}

@@ -1,13 +1,12 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Shield, Database, Loader2, RefreshCw, Activity, AlertTriangle } from 'lucide-react'
+import { Shield, Loader2, RefreshCw, Activity, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { FeatureControlCard } from '@/components/access-control/feature-control-card'
 import { SystemStatusCard } from '@/components/access-control/system-status-card'
 import { useAccessControl, useSystemStatus } from '@/hooks/useAccessControl'
-import { seedAccessControlData } from '@/lib/access-control'
 
 export default function AccessControlPage() {
   const { 
@@ -28,22 +27,8 @@ export default function AccessControlPage() {
     refreshSystemStatus 
   } = useSystemStatus()
   
-  const [seeding, setSeeding] = useState(false)
   const [activeTab, setActiveTab] = useState<'features' | 'system'>('features')
 
-  const handleSeedData = async () => {
-    try {
-      setSeeding(true)
-      await seedAccessControlData()
-      alert('サンプルアクセス制御データを作成しました！')
-      refreshAccessControls()
-      refreshSystemStatus()
-    } catch (err) {
-      alert('データの作成中にエラーが発生しました: ' + (err instanceof Error ? err.message : '不明なエラー'))
-    } finally {
-      setSeeding(false)
-    }
-  }
 
   const handleRefresh = () => {
     refreshAccessControls()
@@ -81,23 +66,6 @@ export default function AccessControlPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button
-            onClick={handleSeedData}
-            disabled={seeding}
-            variant="outline"
-          >
-            {seeding ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                作成中...
-              </>
-            ) : (
-              <>
-                <Database className="h-4 w-4 mr-2" />
-                サンプルデータ作成
-              </>
-            )}
-          </Button>
           <Button onClick={handleRefresh} variant="outline">
             <RefreshCw className="h-4 w-4 mr-2" />
             更新

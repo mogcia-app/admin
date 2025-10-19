@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { BarChart3, Database, Loader2, RefreshCw, TrendingUp, PieChart, LineChart } from 'lucide-react'
+import { BarChart3, Loader2, RefreshCw, TrendingUp, PieChart, LineChart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { AnalyticsDashboard } from '@/components/charts/analytics-dashboard'
@@ -9,25 +9,11 @@ import { LineChart as CustomLineChart } from '@/components/charts/line-chart'
 import { BarChart as CustomBarChart } from '@/components/charts/bar-chart'
 import { PieChart as CustomPieChart } from '@/components/charts/pie-chart'
 import { useKPIDashboard } from '@/hooks/useKPI'
-import { seedKPIData } from '@/lib/kpi'
 
 export default function AnalyticsPage() {
   const { dashboardData, loading, error, refreshData } = useKPIDashboard()
-  const [seeding, setSeeding] = useState(false)
   const [activeView, setActiveView] = useState<'dashboard' | 'examples'>('dashboard')
 
-  const handleSeedData = async () => {
-    try {
-      setSeeding(true)
-      await seedKPIData()
-      alert('サンプルKPIデータを作成しました！')
-      refreshData()
-    } catch (err) {
-      alert('データの作成中にエラーが発生しました: ' + (err instanceof Error ? err.message : '不明なエラー'))
-    } finally {
-      setSeeding(false)
-    }
-  }
 
   const handleRefresh = () => {
     refreshData()
@@ -88,23 +74,6 @@ export default function AnalyticsPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button
-            onClick={handleSeedData}
-            disabled={seeding}
-            variant="outline"
-          >
-            {seeding ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                作成中...
-              </>
-            ) : (
-              <>
-                <Database className="h-4 w-4 mr-2" />
-                サンプルデータ作成
-              </>
-            )}
-          </Button>
           <Button onClick={handleRefresh} variant="outline">
             <RefreshCw className="h-4 w-4 mr-2" />
             更新
