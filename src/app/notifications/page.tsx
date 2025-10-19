@@ -8,8 +8,10 @@ import { NotificationModal } from '@/components/notifications/notification-modal
 import { NotificationList } from '@/components/notifications/notification-list'
 import { Notification } from '@/types'
 import { useNotifications, useNotificationStats } from '@/hooks/useNotifications'
+import { useAuth } from '@/contexts/auth-context'
 
 export default function NotificationsPage() {
+  const { adminUser } = useAuth()
   const { 
     notifications, 
     loading, 
@@ -67,7 +69,7 @@ export default function NotificationsPage() {
         priority: notificationData.priority || 'medium',
         status: notificationData.status || 'draft',
         targetAudience: notificationData.targetAudience || 'all',
-        createdBy: 'admin_001', // 実際は認証されたユーザーのID
+        createdBy: adminUser?.id || 'unknown',
         tags: notificationData.tags || [],
         isSticky: notificationData.isSticky || false
       }

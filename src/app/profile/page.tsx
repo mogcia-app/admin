@@ -27,6 +27,7 @@ import {
   Loader2
 } from 'lucide-react'
 import { AdminProfile, getCurrentUserProfile, updateUserProfile } from '@/lib/profile'
+import { useAuth } from '@/contexts/auth-context'
 
 export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false)
@@ -37,7 +38,8 @@ export default function ProfilePage() {
   const [error, setError] = useState<string | null>(null)
 
   // 現在のユーザーID（実際の実装では認証システムから取得）
-  const currentUserId = 'admin_001' // 仮のユーザーID
+  const { adminUser } = useAuth()
+  const currentUserId = adminUser?.id || 'unknown'
 
   // プロフィールデータを取得
   useEffect(() => {

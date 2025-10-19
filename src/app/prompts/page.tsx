@@ -7,9 +7,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { PromptModal } from '@/components/prompts/prompt-modal'
 import { PromptTemplate } from '@/types'
 import { usePrompts, usePromptStats } from '@/hooks/usePrompts'
-
+import { useAuth } from '@/contexts/auth-context'
 
 export default function PromptsPage() {
+  const { adminUser } = useAuth()
   const { prompts, loading, error, addPrompt, editPrompt, removePrompt } = usePrompts()
   const { stats } = usePromptStats()
   const [filteredPrompts, setFilteredPrompts] = useState<PromptTemplate[]>([])
@@ -69,7 +70,7 @@ export default function PromptsPage() {
         prompt: promptData.prompt || '',
         variables: promptData.variables || [],
         isActive: promptData.isActive ?? true,
-        createdBy: 'admin_001', // 実際は認証されたユーザーのID
+        createdBy: adminUser?.id || 'unknown',
         tags: promptData.tags || [],
         usageCount: 0
       })

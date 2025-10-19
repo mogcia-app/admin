@@ -15,8 +15,10 @@ import {
   getSystemStatus,
   updateSystemStatus
 } from '@/lib/access-control'
+import { useAuth } from '@/contexts/auth-context'
 
 export function useAccessControl() {
+  const { adminUser } = useAuth()
   const [accessControls, setAccessControls] = useState<AppAccessControl[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -81,7 +83,7 @@ export function useAccessControl() {
   const toggleFeatureAccess = async (feature: string, isEnabled: boolean) => {
     try {
       setError(null)
-      await toggleFeature(feature, isEnabled, 'admin_001') // 実際は認証されたユーザーのID
+      await toggleFeature(feature, isEnabled, adminUser?.id || 'unknown')
       
       // ローカル状態を更新
       const existingControlIndex = accessControls.findIndex(c => c.feature === feature)
@@ -102,7 +104,7 @@ export function useAccessControl() {
           description: `${feature}機能の制御設定`,
           allowedRoles: ['admin', 'user'],
           maintenanceMode: false,
-          updatedBy: 'admin_001',
+          updatedBy: adminUser?.id || 'unknown',
           updatedAt: new Date().toISOString()
         }
         setAccessControls([...accessControls, newControl])
@@ -121,7 +123,7 @@ export function useAccessControl() {
   ) => {
     try {
       setError(null)
-      await toggleMaintenanceMode(feature, maintenanceMode, maintenanceMessage, 'admin_001')
+      await toggleMaintenanceMode(feature, maintenanceMode, maintenanceMessage, adminUser?.id || 'unknown')
       
       // ローカル状態を更新
       const existingControlIndex = accessControls.findIndex(c => c.feature === feature)

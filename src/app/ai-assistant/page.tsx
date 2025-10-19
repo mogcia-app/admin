@@ -10,9 +10,11 @@ import { ChatInterface } from '@/components/ai-assistant/chat-interface'
 import { AICapabilities } from '@/components/ai-assistant/ai-capabilities'
 import { useAIChats, useAIChat, useAICapabilities } from '@/hooks/useAIAssistant'
 import { sendChatMessage, isAIAvailable } from '@/lib/ai-client'
+import { useAuth } from '@/contexts/auth-context'
 
 export default function AIAssistantPage() {
-  const adminId = 'admin_001' // 実際は認証されたユーザーのID
+  const { adminUser } = useAuth()
+  const adminId = adminUser?.id || 'unknown'
   
   const { 
     chats, 

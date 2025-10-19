@@ -9,9 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { SettingItem } from '@/components/settings/setting-item'
 import { ProfileSettings } from '@/components/settings/profile-settings'
 import { useSystemSettings, useAdminProfile, useSettingsStats } from '@/hooks/useSettings'
+import { useAuth } from '@/contexts/auth-context'
 
 export default function SettingsPage() {
-  const adminId = 'admin_001' // 実際は認証されたユーザーのID
+  const { adminUser } = useAuth()
+  const adminId = adminUser?.id || 'unknown'
   
   const { 
     settings, 

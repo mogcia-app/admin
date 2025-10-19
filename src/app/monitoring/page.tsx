@@ -7,8 +7,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { ErrorMonitor } from '@/components/monitoring/error-monitor'
 import { PieChart } from '@/components/charts/pie-chart'
 import { useErrorLogs, useErrorStats } from '@/hooks/useMonitoring'
+import { useAuth } from '@/contexts/auth-context'
 
 export default function MonitoringPage() {
+  const { adminUser } = useAuth()
   const { 
     errorLogs, 
     loading: errorLoading, 
@@ -248,7 +250,7 @@ export default function MonitoringPage() {
                         {!error.resolved && (
                           <Button
                             size="sm"
-                            onClick={() => resolveError(error.id, 'admin_001')}
+                            onClick={() => resolveError(error.id, adminUser?.id || 'unknown')}
                             className="bg-green-600 hover:bg-green-700"
                           >
                             <CheckCircle className="h-4 w-4 mr-1" />
