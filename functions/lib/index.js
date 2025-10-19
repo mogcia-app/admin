@@ -32,12 +32,17 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getNotificationStats = exports.deleteNotification = exports.updateNotification = exports.createNotification = exports.getNotifications = exports.getConversionFunnel = exports.getRetentionMetrics = exports.getEngagementMetrics = exports.getUserAcquisitionData = exports.getRevenueData = exports.getKPIMetrics = exports.incrementPromptUsage = exports.deletePrompt = exports.updatePrompt = exports.createPrompt = exports.getPrompts = exports.getDashboardData = exports.createUser = exports.getUsers = void 0;
 const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
+const cors_1 = __importDefault(require("cors"));
 // Firebase Admin SDKの初期化
 admin.initializeApp();
+const corsHandler = (0, cors_1.default)({ origin: true });
 // ユーザー管理関数
 exports.getUsers = functions.https.onRequest(async (req, res) => {
     try {
@@ -156,50 +161,40 @@ exports.getDashboardData = functions.https.onRequest(async (req, res) => {
 // プロンプト管理API
 // =============================================================================
 // プロンプト一覧取得
-exports.getPrompts = functions.https.onRequest(async (req, res) => {
-    try {
-        // CORSヘッダーの設定
-        res.set('Access-Control-Allow-Origin', '*');
-        res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
-        res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-        if (req.method === 'OPTIONS') {
-            res.status(204).send('');
-            return;
+exports.getPrompts = functions.https.onRequest((req, res) => {
+    corsHandler(req, res, async () => {
+        try {
+            // クエリパラメータの取得
+            const category = req.query.category;
+            const search = req.query.search;
+            const isActive = req.query.isActive;
+            let queryRef = admin.firestore().collection('promptTemplates');
+            // フィルター適用
+            if (category && category !== 'all') {
+                queryRef = queryRef.where('category', '==', category);
+            }
+            if (isActive !== undefined) {
+                queryRef = queryRef.where('isActive', '==', isActive === 'true');
+            }
+            const snapshot = await queryRef.orderBy('createdAt', 'desc').get();
+            let prompts = snapshot.docs.map((doc) => (Object.assign({ id: doc.id }, doc.data())));
+            // 検索フィルター（クライアントサイド）
+            if (search) {
+                const searchLower = search.toLowerCase();
+                prompts = prompts.filter((prompt) => {
+                    var _a, _b, _c;
+                    return ((_a = prompt.name) === null || _a === void 0 ? void 0 : _a.toLowerCase().includes(searchLower)) ||
+                        ((_b = prompt.description) === null || _b === void 0 ? void 0 : _b.toLowerCase().includes(searchLower)) ||
+                        ((_c = prompt.tags) === null || _c === void 0 ? void 0 : _c.some((tag) => tag.toLowerCase().includes(searchLower)));
+                });
+            }
+            res.status(200).json({ prompts });
         }
-        if (req.method !== 'GET') {
-            res.status(405).json({ error: 'Method not allowed' });
-            return;
+        catch (error) {
+            console.error('Error getting prompts:', error);
+            res.status(500).json({ error: 'Internal server error' });
         }
-        // クエリパラメータの取得
-        const category = req.query.category;
-        const search = req.query.search;
-        const isActive = req.query.isActive;
-        let queryRef = admin.firestore().collection('promptTemplates');
-        // フィルター適用
-        if (category && category !== 'all') {
-            queryRef = queryRef.where('category', '==', category);
-        }
-        if (isActive !== undefined) {
-            queryRef = queryRef.where('isActive', '==', isActive === 'true');
-        }
-        const snapshot = await queryRef.orderBy('createdAt', 'desc').get();
-        let prompts = snapshot.docs.map((doc) => (Object.assign({ id: doc.id }, doc.data())));
-        // 検索フィルター（クライアントサイド）
-        if (search) {
-            const searchLower = search.toLowerCase();
-            prompts = prompts.filter((prompt) => {
-                var _a, _b, _c;
-                return ((_a = prompt.name) === null || _a === void 0 ? void 0 : _a.toLowerCase().includes(searchLower)) ||
-                    ((_b = prompt.description) === null || _b === void 0 ? void 0 : _b.toLowerCase().includes(searchLower)) ||
-                    ((_c = prompt.tags) === null || _c === void 0 ? void 0 : _c.some((tag) => tag.toLowerCase().includes(searchLower)));
-            });
-        }
-        res.status(200).json({ prompts });
-    }
-    catch (error) {
-        console.error('Error getting prompts:', error);
-        res.status(500).json({ error: 'Internal server error' });
-    }
+    });
 });
 // プロンプト作成
 exports.createPrompt = functions.https.onRequest(async (req, res) => {

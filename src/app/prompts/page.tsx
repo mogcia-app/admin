@@ -23,7 +23,7 @@ export default function PromptsPage() {
 
   // 検索とフィルタリング
   useEffect(() => {
-    let filtered = prompts
+    let filtered = prompts || []
 
     // カテゴリフィルター
     if (selectedCategory !== 'all') {
@@ -35,7 +35,7 @@ export default function PromptsPage() {
       filtered = filtered.filter(prompt =>
         prompt.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         prompt.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        prompt.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+        prompt.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
       )
     }
 
@@ -234,7 +234,7 @@ export default function PromptsPage() {
 
       {/* プロンプト一覧 */}
       <div className="grid gap-4">
-        {filteredPrompts.map((prompt) => (
+        {filteredPrompts?.map((prompt) => (
           <Card key={prompt.id} className="hover:shadow-md transition-shadow">
             <CardHeader>
               <div className="flex items-start justify-between">
@@ -252,7 +252,7 @@ export default function PromptsPage() {
                   </div>
                   <CardDescription>{prompt.description}</CardDescription>
                   <div className="flex flex-wrap gap-1">
-                    {prompt.tags.map((tag) => (
+                    {prompt.tags?.map((tag) => (
                       <span
                         key={tag}
                         className="px-2 py-1 bg-muted text-muted-foreground text-xs rounded"
@@ -312,7 +312,7 @@ export default function PromptsPage() {
                     {prompt.prompt}
                   </p>
                 </div>
-                {prompt.variables.length > 0 && (
+                {prompt.variables && prompt.variables.length > 0 && (
                   <div className="space-y-2">
                     <p className="text-sm font-medium">変数:</p>
                     <div className="flex flex-wrap gap-2">
@@ -334,7 +334,7 @@ export default function PromptsPage() {
         ))}
       </div>
 
-      {filteredPrompts.length === 0 && (
+      {(!filteredPrompts || filteredPrompts.length === 0) && (
         <div className="text-center py-12">
           <p className="text-muted-foreground">該当するプロンプトが見つかりませんでした。</p>
         </div>
