@@ -44,6 +44,14 @@ export default function AIAssistantPage() {
   } = useAICapabilities()
   
   const [activeView, setActiveView] = useState<'chat' | 'capabilities'>('chat')
+  
+  // 統計情報の計算
+  const stats = {
+    totalChats: chats.length,
+    totalMessages: chats.reduce((sum, chat) => sum + (chat.messages?.length || 0), 0),
+    availableCapabilities: capabilities.length,
+    activeCapabilities: capabilities.filter(cap => cap.isEnabled).length
+  }
   const [aiAvailable, setAiAvailable] = useState(isAIAvailable())
   const [apiKey, setApiKey] = useState('')
   const [showApiKeyInput, setShowApiKeyInput] = useState(!aiAvailable)
@@ -94,13 +102,6 @@ export default function AIAssistantPage() {
       setActiveView('chat')
       sendMessage(example)
     }
-  }
-
-  const stats = {
-    totalChats: chats.length,
-    totalMessages: chats.reduce((sum, chat) => sum + chat.messages.length, 0),
-    availableCapabilities: capabilities.length,
-    activeCapabilities: capabilities.filter(c => c.isEnabled).length
   }
 
   return (

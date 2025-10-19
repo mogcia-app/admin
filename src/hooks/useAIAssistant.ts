@@ -209,11 +209,14 @@ export function useAIChat(chatId: string | null) {
         }
       } else {
         // フォールバック: AI機能が無効な場合
-        aiResponseContent = await generateAIResponse(content, {
-          chatHistory: chat.messages,
-          adminId: chat.adminId
-        })
+        aiResponseContent = '申し訳ございません。現在AI機能が利用できません。APIキーを設定してください。'
         aiMetadata.actionTaken = 'fallback_response'
+      }
+
+      // aiResponseContentが未定義の場合のフォールバック
+      if (!aiResponseContent) {
+        aiResponseContent = '申し訳ございません。応答を生成できませんでした。'
+        aiMetadata.actionTaken = 'error_response'
       }
 
       // AI応答メッセージを追加

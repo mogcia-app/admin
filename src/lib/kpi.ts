@@ -235,6 +235,7 @@ async function calculateKPIsFromUsers(): Promise<{
       lastLoginAt: doc.data().lastLoginAt?.toDate?.() || null,
       subscriptionStatus: doc.data().subscriptionStatus || 'free',
       plan: doc.data().plan || 'free',
+      contractType: doc.data().contractType || 'trial',
       revenue: doc.data().revenue || 0
     }))
 
@@ -259,37 +260,44 @@ async function calculateKPIsFromUsers(): Promise<{
     ).length
     const churnRate = totalUsers > 0 ? (churnedUsers / totalUsers) * 100 : 0
 
-    // 売上関連の計算
-    const totalRevenue = users.reduce((sum, user) => sum + (user.revenue || 0), 0)
+    // 売上関連の計算（年間契約のみをカウント、お試し期間は除外）
+    const totalRevenue = users
+      .filter(user => user.contractType === 'annual' && user.subscriptionStatus === 'active')
+      .reduce((sum, user) => sum + (user.revenue || 0), 0)
     const monthlyRecurringRevenue = users
-      .filter(user => user.subscriptionStatus === 'active')
+      .filter(user => user.contractType === 'annual' && user.subscriptionStatus === 'active')
       .reduce((sum, user) => sum + (user.revenue || 0), 0)
     const averageRevenuePerUser = totalUsers > 0 ? totalRevenue / totalUsers : 0
     const customerLifetimeValue = averageRevenuePerUser * 12
 
-    // 売上ソース別・プラン別の計算
-    const revenueBySource = users.reduce((acc, user) => {
-      const source = user.subscriptionStatus === 'active' ? 'subscription' : 'one-time'
-      acc[source] = (acc[source] || 0) + (user.revenue || 0)
-      return acc
-    }, {} as Record<string, number>)
+    // 売上ソース別・プラン別の計算（年間契約のみをカウント）
+    const revenueBySource = users
+      .filter(user => user.contractType === 'annual' && user.subscriptionStatus === 'active')
+      .reduce((acc, user) => {
+        const source = user.subscriptionStatus === 'active' ? 'subscription' : 'one-time'
+        acc[source] = (acc[source] || 0) + (user.revenue || 0)
+        return acc
+      }, {} as Record<string, number>)
 
-    const revenueByPlan = users.reduce((acc, user) => {
-      const plan = user.plan || 'free'
-      acc[plan] = (acc[plan] || 0) + (user.revenue || 0)
-      return acc
-    }, {} as Record<string, number>)
+    const revenueByPlan = users
+      .filter(user => user.contractType === 'annual' && user.subscriptionStatus === 'active')
+      .reduce((acc, user) => {
+        const plan = user.plan || 'free'
+        acc[plan] = (acc[plan] || 0) + (user.revenue || 0)
+        return acc
+      }, {} as Record<string, number>)
 
-    // 前月との比較（簡易版）
+    // 前月との比較（簡易版、年間契約のみをカウント）
     const lastMonthUsers = users.filter(user => 
-      user.createdAt >= startOfLastMonth && user.createdAt <= endOfLastMonth
+      user.createdAt >= startOfLastMonth && user.createdAt <= endOfLastMonth &&
+      user.contractType === 'annual' && user.subscriptionStatus === 'active'
     )
     const lastMonthRevenue = lastMonthUsers.reduce((sum, user) => sum + (user.revenue || 0), 0)
     const revenueGrowth = lastMonthRevenue > 0 ? ((totalRevenue - lastMonthRevenue) / lastMonthRevenue) * 100 : 0
 
     // コンバージョン率の計算
     const trialUsers = users.filter(user => user.subscriptionStatus === 'trial').length
-    const payingUsers = users.filter(user => user.subscriptionStatus === 'active').length
+    const payingUsers = users.filter(user => user.contractType === 'annual' && user.subscriptionStatus === 'active').length
     const signupUsers = users.filter(user => user.createdAt >= startOfMonth).length
 
     const trialToPayingConversion = trialUsers > 0 ? (payingUsers / trialUsers) * 100 : 0
@@ -366,7 +374,7 @@ export async function getKPIDashboardData(): Promise<KPIDashboardData> {
   }
 }
 
-// 月次売上データの生成（ユーザーデータから）
+// 月次売上データの生成（年間契約のみの売上から）
 function generateMonthlyRevenueData(totalRevenue: number, startDate: string, endDate: string): RevenueData[] {
   const data: RevenueData[] = []
   const start = new Date(startDate)
@@ -381,7 +389,7 @@ function generateMonthlyRevenueData(totalRevenue: number, startDate: string, end
       date: dateStr,
       amount: Math.round(dailyRevenue),
       source: 'subscription',
-      plan: 'professional',
+      plan: 'professional', // 年間契約のみ
       currency: 'JPY',
       createdAt: new Date().toISOString()
     })
