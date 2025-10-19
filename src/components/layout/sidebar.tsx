@@ -75,12 +75,12 @@ const sidebarItems: SidebarItem[] = [
   //   icon: User,
   //   href: '/profile',
   // },
-  {
-    id: 'settings',
-    label: '設定',
-    icon: Settings,
-    href: '/settings',
-  },
+  // {
+  //   id: 'settings',
+  //   label: '設定',
+  //   icon: Settings,
+  //   href: '/settings',
+  // },
 ]
 
 interface SidebarProps {
