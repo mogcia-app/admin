@@ -20,7 +20,7 @@ import { Badge } from '@/components/ui/badge'
 import { Notification } from '@/types'
 
 interface NotificationListProps {
-  notifications: Notification[]
+  notifications: Notification[] | undefined
   loading?: boolean
   onEdit: (notification: Notification) => void
   onDelete: (id: string) => void
@@ -132,7 +132,7 @@ export function NotificationList({
     )
   }
 
-  if (notifications.length === 0) {
+  if (!notifications || notifications.length === 0) {
     return (
       <div className="text-center py-12">
         <div className="text-6xl mb-4">📢</div>
@@ -144,7 +144,7 @@ export function NotificationList({
 
   return (
     <div className="space-y-4">
-      {notifications.map((notification) => {
+      {notifications?.map((notification) => {
         const expired = isExpired(notification)
         
         return (
@@ -211,7 +211,7 @@ export function NotificationList({
                   </CardDescription>
                   
                   <div className="flex flex-wrap gap-1">
-                    {notification.tags.map((tag) => (
+                    {notification.tags?.map((tag) => (
                       <span
                         key={tag}
                         className="px-2 py-1 bg-muted text-muted-foreground text-xs rounded flex items-center gap-1"

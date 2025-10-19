@@ -35,7 +35,7 @@ export default function NotificationsPage() {
 
   // 検索とフィルタリング
   React.useEffect(() => {
-    let filtered = notifications
+    let filtered = notifications || []
 
     // ステータスフィルター
     if (selectedStatus !== 'all') {
