@@ -89,7 +89,7 @@ export function ChatInterface({
   }
 
   const quickPrompts = [
-    '田中さんという顧客を検索して',
+    '顧客を検索して',
     'ログイン機能の使い方を教えて',
     'システムの稼働状況を確認',
     'KPIの達成状況はどう？',

@@ -77,15 +77,33 @@ export async function generateCustomerSearchResponse(message: string): Promise<T
     // ユーザー一覧を取得
     const users = await getUsers()
     
-    // 検索キーワードを抽出（簡易的な実装）
+    // 検索キーワードを抽出（より柔軟な実装）
     const searchTerms = message
       .replace(/[^\w\s\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/g, '')
       .split(/\s+/)
-      .filter(term => term.length > 1)
+      .filter(term => term.length > 0)
     
-    // ユーザーを検索
+    // 検索キーワードがない場合は全ユーザーを表示
+    if (searchTerms.length === 0) {
+      return {
+        type: 'template',
+        content: `🔍 **顧客一覧** (${users.length}件)\n\n${users.slice(0, 10).map(user => 
+          `**${user.name}**\n` +
+          `📧 ${user.email}\n` +
+          `👤 ${user.role || 'user'}\n` +
+          `📅 登録日: ${new Date(user.createdAt).toLocaleDateString('ja-JP')}\n` +
+          `🟢 ステータス: ${user.isActive ? 'アクティブ' : '非アクティブ'}\n`
+        ).join('\n---\n')}\n\n${users.length > 10 ? `\n*他に${users.length - 10}件のユーザーがあります*` : ''}`,
+        metadata: {
+          customerSearch: true,
+          templateUsed: 'customer_list_all'
+        }
+      }
+    }
+    
+    // ユーザーを検索（名前、メール、役職、会社名など）
     const filteredUsers = users.filter(user => {
-      const searchText = `${user.name} ${user.email} ${user.role}`.toLowerCase()
+      const searchText = `${user.name} ${user.email} ${user.role || ''} ${user.businessInfo?.companySize || ''} ${user.businessInfo?.industry || ''}`.toLowerCase()
       return searchTerms.some(term => searchText.includes(term.toLowerCase()))
     })
     
@@ -104,12 +122,15 @@ export async function generateCustomerSearchResponse(message: string): Promise<T
     const userList = filteredUsers.slice(0, 10).map(user => 
       `**${user.name}**\n` +
       `📧 ${user.email}\n` +
-      `👤 ${user.role}\n` +
+      `👤 ${user.role || 'user'}\n` +
       `📅 登録日: ${new Date(user.createdAt).toLocaleDateString('ja-JP')}\n` +
-      `🟢 ステータス: ${user.isActive ? 'アクティブ' : '非アクティブ'}\n`
+      `🟢 ステータス: ${user.isActive ? 'アクティブ' : '非アクティブ'}\n` +
+      `${user.businessInfo?.industry ? `🏢 業界: ${user.businessInfo.industry}\n` : ''}` +
+      `${user.businessInfo?.companySize ? `👥 規模: ${user.businessInfo.companySize}\n` : ''}`
     ).join('\n---\n')
     
-    const content = `🔍 **顧客検索結果** (${filteredUsers.length}件)\n\n${userList}\n\n${filteredUsers.length > 10 ? `\n*他に${filteredUsers.length - 10}件の結果があります*` : ''}`
+    const searchQuery = searchTerms.join(' ')
+    const content = `🔍 **顧客検索結果** (${filteredUsers.length}件)\n\n**検索キーワード:** "${searchQuery}"\n\n${userList}\n\n${filteredUsers.length > 10 ? `\n*他に${filteredUsers.length - 10}件の結果があります*` : ''}`
     
     return {
       type: 'template',
