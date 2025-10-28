@@ -123,7 +123,7 @@ export function useUserStats() {
         const teamUsers = users.filter(user => user.usageType === 'team').length
         const soloUsers = users.filter(user => user.usageType === 'solo').length
         
-        // SNS契約数に基づく売上計算
+        // SNS契約数に基づく売上計算（お試し利用者は除外）
         const snsPricing = {
           1: 60000,
           2: 80000,
@@ -132,7 +132,7 @@ export function useUserStats() {
         }
         
         const totalRevenue = users
-          .filter(user => user.isActive)
+          .filter(user => user.isActive && user.contractType === 'annual')
           .reduce((total, user) => {
             const snsCount = user.snsCount || 1
             return total + (snsPricing[snsCount as keyof typeof snsPricing] || 60000)

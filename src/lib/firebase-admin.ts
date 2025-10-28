@@ -1,5 +1,5 @@
 // Firebase Admin SDK for server-side operations
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, orderBy, setDoc } from 'firebase/firestore'
+import { collection, getDocs, getDoc, addDoc, updateDoc, deleteDoc, doc, query, where, orderBy, setDoc } from 'firebase/firestore'
 import { createUserWithEmailAndPassword, deleteUser as deleteAuthUser } from 'firebase/auth'
 import { db, auth } from './firebase'
 import { User } from '@/types'
@@ -141,6 +141,67 @@ export const userService = {
       console.log(`User ${userId} deleted from Firestore. Firebase Auth deletion requires Admin SDK.`)
     } catch (error) {
       console.error('Error deleting user:', error)
+      throw error
+    }
+  },
+
+  // Check if user's contract is active
+  async isContractActive(userId: string): Promise<boolean> {
+    try {
+      const userRef = doc(db, 'users', userId)
+      const userDoc = await getDoc(userRef)
+      
+      if (!userDoc.exists()) return false
+      
+      const user = userDoc.data() as User
+      const now = new Date()
+      const endDate = new Date(user.contractEndDate)
+      
+      return user.status === 'active' && endDate > now
+    } catch (error) {
+      console.error('Error checking contract status:', error)
+      return false
+    }
+  },
+
+  // Extend contract period
+  async extendContract(userId: string, months: number): Promise<void> {
+    try {
+      const userRef = doc(db, 'users', userId)
+      const userDoc = await getDoc(userRef)
+      
+      if (!userDoc.exists()) {
+        throw new Error('User not found')
+      }
+      
+      const user = userDoc.data() as User
+      const currentEndDate = new Date(user.contractEndDate)
+      const newEndDate = new Date(currentEndDate)
+      newEndDate.setMonth(newEndDate.getMonth() + months)
+      
+      await updateDoc(userRef, {
+        contractEndDate: newEndDate.toISOString(),
+        updatedAt: new Date().toISOString()
+      })
+    } catch (error) {
+      console.error('Error extending contract:', error)
+      throw error
+    }
+  },
+
+  // Reactivate user contract
+  async reactivateContract(userId: string, newEndDate: string): Promise<void> {
+    try {
+      const userRef = doc(db, 'users', userId)
+      
+      await updateDoc(userRef, {
+        status: 'active',
+        contractStartDate: new Date().toISOString(),
+        contractEndDate: newEndDate,
+        updatedAt: new Date().toISOString()
+      })
+    } catch (error) {
+      console.error('Error reactivating contract:', error)
       throw error
     }
   }

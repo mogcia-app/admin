@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { UserModal } from '@/components/users/user-modal'
 import { User } from '@/types'
 import { useUsers, useUserStats } from '@/hooks/useUsers'
+import { userService } from '@/lib/firebase-admin'
 
 // SNSアイコンマッピング
 const snsIcons = {
@@ -293,127 +294,125 @@ export default function UsersPage() {
       </div>
 
       {/* 利用者一覧 */}
-      <Card>
-        <CardHeader>
-          <CardTitle>利用者一覧</CardTitle>
-          <CardDescription>
+      <div>
+        <div className="mb-4">
+          <h2 className="text-xl font-semibold">利用者一覧</h2>
+          <p className="text-sm text-muted-foreground">
             {filteredUsers.length} 人の利用者が見つかりました
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {filteredUsers.map((user) => (
-              <Card key={user.id} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-3 flex-1">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
-                          <span className="text-sm font-medium text-primary-foreground">
-                            {user.name.charAt(0)}
-                          </span>
-                        </div>
-                        <div>
-                          <h3 className="font-medium text-lg">{user.name}</h3>
-                          <p className="text-sm text-muted-foreground">{user.email}</p>
-                        </div>
-                        <div className="flex gap-2">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(user.status)}`}>
-                            {getStatusLabel(user.status)}
-                          </span>
-                          <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-medium">
-                            {getContractTypeLabel(user.contractType)}
-                          </span>
-                          <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full font-medium">
-                            {getUsageTypeLabel(user.usageType)}
-                          </span>
-                        </div>
+          </p>
+        </div>
+        <div className="space-y-4">
+          {filteredUsers.map((user) => (
+            <Card key={user.id} className="hover:shadow-md transition-shadow">
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-3 flex-1">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
+                        <span className="text-sm font-medium text-primary-foreground">
+                          {user.name.charAt(0)}
+                        </span>
                       </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                        <div>
-                          <p className="font-medium flex items-center gap-1">
-                            <Building className="h-4 w-4" />
-                            事業情報
-                          </p>
-                          <p className="text-muted-foreground">{user.businessInfo.industry}</p>
-                          <p className="text-muted-foreground">{user.businessInfo.companySize === 'individual' ? '個人' : user.businessInfo.companySize === 'small' ? '小規模' : user.businessInfo.companySize === 'medium' ? '中規模' : '大規模'}</p>
-                        </div>
-                        
-                        <div>
-                          <p className="font-medium">契約SNS</p>
-                          <div className="flex gap-1 mt-1">
-                            {user.contractSNS.map((sns) => (
-                              <span
-                                key={sns}
-                                className="inline-flex items-center gap-1 px-2 py-1 bg-muted text-muted-foreground text-xs rounded"
-                                title={snsLabels[sns]}
-                              >
-                                {snsIcons[sns]} {snsLabels[sns]}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div>
-                          <p className="font-medium">契約期間</p>
-                          <p className="text-muted-foreground">
-                            {new Date(user.contractStartDate).toLocaleDateString('ja-JP')} - {new Date(user.contractEndDate).toLocaleDateString('ja-JP')}
-                          </p>
-                          {user.billingInfo && (
-                            <p className="text-muted-foreground">
-                              {formatCurrency(user.billingInfo.monthlyFee)}/月
-                            </p>
-                          )}
-                        </div>
+                      <div>
+                        <h3 className="font-medium text-lg">{user.name}</h3>
+                        <p className="text-sm text-muted-foreground">{user.email}</p>
                       </div>
-
-                      <div className="text-sm">
-                        <p className="font-medium">事業内容</p>
-                        <p className="text-muted-foreground line-clamp-2">{user.businessInfo.description}</p>
+                      <div className="flex gap-2">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(user.status)}`}>
+                          {getStatusLabel(user.status)}
+                        </span>
+                        <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-medium">
+                          {getContractTypeLabel(user.contractType)}
+                        </span>
+                        <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full font-medium">
+                          {getUsageTypeLabel(user.usageType)}
+                        </span>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 ml-4">
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => openDetailModal(user)}
-                        title="詳細表示"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => openEditModal(user)}
-                        title="編集"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => handleDeleteUser(user.id)}
-                        title="削除"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                      <div>
+                        <p className="font-medium flex items-center gap-1">
+                          <Building className="h-4 w-4" />
+                          事業情報
+                        </p>
+                        <p className="text-muted-foreground">{user.businessInfo.industry}</p>
+                        <p className="text-muted-foreground">{user.businessInfo.companySize === 'individual' ? '個人' : user.businessInfo.companySize === 'small' ? '小規模' : user.businessInfo.companySize === 'medium' ? '中規模' : '大規模'}</p>
+                      </div>
+                      
+                      <div>
+                        <p className="font-medium">契約SNS</p>
+                        <div className="flex gap-1 mt-1">
+                          {user.contractSNS.map((sns) => (
+                            <span
+                              key={sns}
+                              className="inline-flex items-center gap-1 px-2 py-1 bg-muted text-muted-foreground text-xs rounded"
+                              title={snsLabels[sns]}
+                            >
+                              {snsIcons[sns]} {snsLabels[sns]}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <p className="font-medium">契約期間</p>
+                        <p className="text-muted-foreground">
+                          {new Date(user.contractStartDate).toLocaleDateString('ja-JP')} - {new Date(user.contractEndDate).toLocaleDateString('ja-JP')}
+                        </p>
+                        {user.billingInfo && (
+                          <p className="text-muted-foreground">
+                            {formatCurrency(user.billingInfo.monthlyFee)}/月
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="text-sm">
+                      <p className="font-medium">事業内容</p>
+                      <p className="text-muted-foreground line-clamp-2">{user.businessInfo.description}</p>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
 
-            {filteredUsers.length === 0 && (
-              <div className="text-center py-12">
-                <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p className="text-muted-foreground">該当する利用者が見つかりませんでした。</p>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+                  <div className="flex items-center gap-2 ml-4">
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => openDetailModal(user)}
+                      title="詳細表示"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => openEditModal(user)}
+                      title="編集"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => handleDeleteUser(user.id)}
+                      title="削除"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+
+          {filteredUsers.length === 0 && (
+            <div className="text-center py-12">
+              <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p className="text-muted-foreground">該当する利用者が見つかりませんでした。</p>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* 詳細モーダル（簡易版） */}
       {showDetailModal && selectedUser && (
@@ -484,6 +483,79 @@ export default function UsersPage() {
                       </div>
                     )
                   })}
+                </div>
+              </div>
+
+              {/* 契約管理アクション */}
+              <div className="border-t pt-4">
+                <h3 className="font-medium mb-3">契約管理</h3>
+                <div className="flex gap-2 flex-wrap">
+                  {new Date(selectedUser.contractEndDate) < new Date() ? (
+                    <Button
+                      onClick={async () => {
+                        if (confirm('この利用者の契約を再開しますか？')) {
+                          try {
+                            const newEndDate = new Date()
+                            newEndDate.setFullYear(newEndDate.getFullYear() + 1)
+                            await userService.reactivateContract(selectedUser.id, newEndDate.toISOString())
+                            setSelectedUser(null)
+                            setShowDetailModal(false)
+                            alert('契約を1年間再開しました！')
+                            window.location.reload()
+                          } catch (err) {
+                            alert('契約の再開に失敗しました: ' + (err instanceof Error ? err.message : '不明なエラー'))
+                          }
+                        }
+                      }}
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      契約を再開（1年間）
+                    </Button>
+                  ) : (
+                    <>
+                      <Button
+                        onClick={async () => {
+                          if (confirm('契約期間を1年延長しますか？')) {
+                            try {
+                              await userService.extendContract(selectedUser.id, 12)
+                              setSelectedUser(null)
+                              setShowDetailModal(false)
+                              alert('契約期間を1年延長しました！')
+                              window.location.reload()
+                            } catch (err) {
+                              alert('契約期間の延長に失敗しました: ' + (err instanceof Error ? err.message : '不明なエラー'))
+                            }
+                          }
+                        }}
+                        variant="default"
+                      >
+                        契約期間+1年
+                      </Button>
+                      <Button
+                        onClick={async () => {
+                          if (confirm('この利用者のログインを停止しますか？\n（途中解約）')) {
+                            try {
+                              const now = new Date()
+                              await userService.updateUser(selectedUser.id, {
+                                status: 'suspended',
+                                contractEndDate: now.toISOString(),
+                                isActive: false
+                              })
+                              setSelectedUser(null)
+                              setShowDetailModal(false)
+                              alert('ログインを停止しました。')
+                              window.location.reload()
+                            } catch (err) {
+                              alert('ログイン停止に失敗しました: ' + (err instanceof Error ? err.message : '不明なエラー'))
+                            }
+                          }
+                        }}
+                        className="bg-red-600 hover:bg-red-700 text-white"
+                      >
+                        途中解約（ログイン停止）
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
