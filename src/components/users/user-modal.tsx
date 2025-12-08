@@ -5,13 +5,15 @@ import { createPortal } from 'react-dom'
 import { X, Save, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { User, SNSAISettings, BusinessInfo, BillingInfo } from '@/types'
+import { User, SNSAISettings, BusinessInfo, BillingInfo, Company } from '@/types'
+import { useCompanies } from '@/hooks/useCompanies'
 
 interface UserModalProps {
   isOpen: boolean
   onClose: () => void
   user?: User | null
   onSave: (user: Partial<User>) => void
+  preselectedCompanyId?: string // 事前選択された企業ID（企業ページから遷移した場合など）
 }
 
 const snsOptions = [
@@ -43,7 +45,8 @@ const industryOptions = [
   'その他'
 ]
 
-export function UserModal({ isOpen, onClose, user, onSave }: UserModalProps) {
+export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId }: UserModalProps) {
+  const { companies } = useCompanies()
   const [formData, setFormData] = useState<Partial<User>>({
     name: '',
     email: '',
@@ -53,6 +56,7 @@ export function UserModal({ isOpen, onClose, user, onSave }: UserModalProps) {
     contractSNS: [],
     snsCount: 1, // デフォルトは1SNS
     snsAISettings: {},
+    companyId: undefined, // 企業ID（オプション）
     businessInfo: {
       industry: '',
       companySize: 'individual',
@@ -94,6 +98,10 @@ export function UserModal({ isOpen, onClose, user, onSave }: UserModalProps) {
         contractEndDate: user.contractEndDate.split('T')[0] + 'T00:00:00Z'
       })
     } else {
+      // 事前選択された企業IDを設定
+      if (preselectedCompanyId) {
+        setFormData(prev => ({ ...prev, companyId: preselectedCompanyId }))
+      }
       // 新規作成時のデフォルト値
       const now = new Date()
       const endDate = new Date(now)
@@ -135,10 +143,11 @@ export function UserModal({ isOpen, onClose, user, onSave }: UserModalProps) {
           nextBillingDate: endDate.toISOString(),
           paymentStatus: 'paid'
         },
-        notes: ''
+        notes: '',
+        companyId: preselectedCompanyId || undefined
       })
     }
-  }, [user])
+  }, [user, preselectedCompanyId])
 
   // 契約タイプ変更時の終了日自動設定
   useEffect(() => {
@@ -437,6 +446,35 @@ export function UserModal({ isOpen, onClose, user, onSave }: UserModalProps) {
                   </p>
                 </div>
               )}
+
+              {/* 企業選択（B2B向け） */}
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  所属企業（オプション）
+                  <span className="text-xs text-muted-foreground ml-2">
+                    企業向け販売の場合、ユーザーを企業に紐付けます
+                  </span>
+                </label>
+                <select
+                  value={formData.companyId || ''}
+                  onChange={(e) => setFormData({ ...formData, companyId: e.target.value || undefined })}
+                  className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="">企業を選択しない（個人利用者）</option>
+                  {companies
+                    .filter(company => company.status === 'active')
+                    .map((company) => (
+                      <option key={company.id} value={company.id}>
+                        {company.name} {company.industry ? `(${company.industry})` : ''}
+                      </option>
+                    ))}
+                </select>
+                {formData.companyId && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    選択中の企業: {companies.find(c => c.id === formData.companyId)?.name}
+                  </p>
+                )}
+              </div>
 
               <div className="grid grid-cols-4 gap-4">
                 <div>

@@ -21,6 +21,8 @@ export interface User {
   notes?: string
   // パスワードは新規作成時のみ使用（Firestoreには保存しない）
   password?: string
+  // 企業管理（B2B向け）
+  companyId?: string // 所属企業ID（企業向け販売の場合）
 }
 
 export interface AdminLayoutProps {
@@ -349,6 +351,15 @@ export interface AppAccessControl {
     endTime: string
     message: string
   }
+  // 部分ブロック設定
+  blockSettings?: {
+    blockNewUsers: boolean
+    blockTrialUsers: boolean
+    blockFreeUsers: boolean
+    allowedIps?: string[]
+    blockedIps?: string[]
+    allowedUserIds?: string[]
+  }
   updatedBy: string
   updatedAt: string
 }
@@ -376,53 +387,43 @@ export interface SystemIncident {
   updates: IncidentUpdate[]
 }
 
+// 緊急セキュリティモード用の型定義
+export interface EmergencySecurityMode {
+  id: string
+  isActive: boolean
+  mode: 'full_block' | 'partial_block' | 'vulnerability_response'
+  reason: string
+  description: string
+  affectedFeatures: string[]
+  blockedUserGroups: ('new_users' | 'trial_users' | 'free_users' | 'all')[]
+  blockedActions: ('login' | 'registration' | 'file_upload' | 'api_access' | 'ai_features' | 'data_export')[]
+  maintenanceMessage: string
+  startedBy: string
+  startedAt: string
+  estimatedResolution?: string
+  autoDisableAt?: string
+  notes?: string
+}
+
+// 脆弱性対応プリセット
+export interface SecurityPreset {
+  id: string
+  name: string
+  description: string
+  mode: EmergencySecurityMode['mode']
+  affectedFeatures: string[]
+  blockedUserGroups: EmergencySecurityMode['blockedUserGroups']
+  blockedActions: EmergencySecurityMode['blockedActions']
+  maintenanceMessage: string
+  recommendedActions: string[]
+}
+
 export interface IncidentUpdate {
   id: string
   message: string
   status: 'investigating' | 'identified' | 'monitoring' | 'resolved'
   timestamp: string
   author: string
-}
-
-// エラー監視用の型定義
-export interface ErrorLog {
-  id: string
-  message: string
-  stack?: string
-  level: 'info' | 'warn' | 'error' | 'fatal'
-  source: 'client' | 'server' | 'api' | 'database'
-  userId?: string
-  userAgent?: string
-  url?: string
-  timestamp: string
-  resolved: boolean
-  assignedTo?: string
-  tags: string[]
-  count: number
-}
-
-export interface SalesProgress {
-  id: string
-  period: string // YYYY-MM format
-  target: number
-  achieved: number
-  salesRep: string
-  deals: Deal[]
-  notes: string
-  createdAt: string
-  updatedAt: string
-}
-
-export interface Deal {
-  id: string
-  customerName: string
-  amount: number
-  stage: 'lead' | 'qualified' | 'proposal' | 'negotiation' | 'closed_won' | 'closed_lost'
-  probability: number
-  expectedCloseDate: string
-  actualCloseDate?: string
-  source: string
-  notes: string
 }
 
 // AIアシスタント用の型定義
@@ -530,4 +531,37 @@ export interface BlogStats {
   mostPopularPost?: BlogPost
   postsByCategory: Record<string, number>
   postsByMonth: Record<string, number>
+}
+
+// 企業管理システム用の型定義
+export interface Company {
+  id: string
+  name: string // 企業名
+  description?: string // 企業説明
+  industry?: string // 業界
+  website?: string // WebサイトURL
+  contactEmail?: string // 連絡先メール
+  contactName?: string // 担当者名
+  contactPhone?: string // 担当者電話番号
+  address?: string // 住所
+  userCount: number // この企業に所属するユーザー数
+  activeUserCount: number // アクティブなユーザー数
+  status: 'active' | 'inactive' | 'suspended' // 企業ステータス
+  contractStartDate?: string // 契約開始日
+  contractEndDate?: string // 契約終了日
+  billingInfo?: CompanyBillingInfo // 請求情報
+  notes?: string // 備考
+  createdAt: string
+  updatedAt: string
+  createdBy: string // 作成者ID
+}
+
+export interface CompanyBillingInfo {
+  plan: 'enterprise' | 'business' | 'custom'
+  monthlyFee: number
+  userLimit?: number // ユーザー数の上限（オプション）
+  currency: 'JPY' | 'USD'
+  paymentMethod: 'credit_card' | 'bank_transfer' | 'invoice'
+  nextBillingDate?: string
+  paymentStatus: 'paid' | 'pending' | 'overdue'
 }

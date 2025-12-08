@@ -14,7 +14,7 @@ import {
   Bell,
   Shield,
   Bot,
-  Monitor,
+  Building2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -26,6 +26,12 @@ const sidebarItems: SidebarItem[] = [
     label: 'ユーザー管理',
     icon: Users,
     href: '/users',
+  },
+  {
+    id: 'companies',
+    label: '企業管理',
+    icon: Building2,
+    href: '/companies',
   },
   {
     id: 'prompts',
@@ -62,12 +68,6 @@ const sidebarItems: SidebarItem[] = [
     label: 'AIアシスタント',
     icon: Bot,
     href: '/ai-assistant',
-  },
-  {
-    id: 'monitoring',
-    label: 'エラー監視・営業',
-    icon: Monitor,
-    href: '/monitoring',
   },
   // {
   //   id: 'profile',

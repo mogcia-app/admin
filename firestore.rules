@@ -2,6 +2,15 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    // 管理者メールアドレスのリスト
+    function isAdminEmail() {
+      return request.auth != null && (
+        request.auth.token.email == 'marina.ishida@signalapp.jp' ||
+        request.auth.token.email == 'hiroto.domoto@signalapp.jp' ||
+        request.auth.token.email == 'kentarou.kitamura@signalapp.jp'
+      );
+    }
+    
     // ユーザー認証と契約期間チェック
     function isAuthenticated() {
       return request.auth != null;
@@ -16,7 +25,7 @@ service cloud.firestore {
       
       return status == 'active' && 
              contractEndDate != null && 
-             contractEndDate.toDate() > now;
+             contractEndDate > now;
     }
     
     // ユーザーコレクション - 契約期間チェック付き
@@ -24,8 +33,7 @@ service cloud.firestore {
       // 自分自身のデータは読み取り可能
       allow read: if isAuthenticated() && request.auth.uid == userId;
       // 管理者は読み書き可能
-      allow read, write: if isAuthenticated() && 
-                               request.auth.token.admin == true;
+      allow read, write: if isAuthenticated() && isAdminEmail();
       // 契約期間内のユーザーのみ書き込み可能
       allow write: if isAuthenticated() && 
                         request.auth.uid == userId && 
@@ -35,31 +43,80 @@ service cloud.firestore {
                          request.auth.uid == userId;
     }
     
-    // 開発環境用: 全てのアクセスを許可（本番環境では削除）
-    match /{document=**} {
-      allow read, write: if true;
+    // エラーログ、KPI、プロンプト、通知など、管理者専用コレクション
+    match /errorLogs/{document=**} {
+      allow read, write: if isAuthenticated() && isAdminEmail();
     }
     
-    // ブログ記事関連のルール（将来の本番環境用）
+    match /kpiMetrics/{document=**} {
+      allow read, write: if isAuthenticated() && isAdminEmail();
+    }
+    
+    match /revenueData/{document=**} {
+      allow read, write: if isAuthenticated() && isAdminEmail();
+    }
+    
+    match /userAcquisition/{document=**} {
+      allow read, write: if isAuthenticated() && isAdminEmail();
+    }
+    
+    match /engagementMetrics/{document=**} {
+      allow read, write: if isAuthenticated() && isAdminEmail();
+    }
+    
+    match /retentionMetrics/{document=**} {
+      allow read, write: if isAuthenticated() && isAdminEmail();
+    }
+    
+    match /conversionFunnels/{document=**} {
+      allow read, write: if isAuthenticated() && isAdminEmail();
+    }
+    
+    match /prompts/{document=**} {
+      allow read, write: if isAuthenticated() && isAdminEmail();
+    }
+    
+    match /notifications/{document=**} {
+      allow read, write: if isAuthenticated() && isAdminEmail();
+    }
+    
+    match /salesProgress/{document=**} {
+      allow read, write: if isAuthenticated() && isAdminEmail();
+    }
+    
+    match /deals/{document=**} {
+      allow read, write: if isAuthenticated() && isAdminEmail();
+    }
+    
+    match /aiChats/{document=**} {
+      allow read, write: if isAuthenticated() && isAdminEmail();
+    }
+    
+    // ブログ記事関連のルール
     match /blogPosts/{postId} {
       // 公開済み記事は誰でも読み取り可能
       allow read: if resource.data.status == 'published';
       // 管理者のみ作成・更新・削除可能
-      allow write: if request.auth != null && request.auth.token.admin == true;
+      allow write: if isAuthenticated() && isAdminEmail();
     }
     
     match /blogCategories/{categoryId} {
       // 誰でも読み取り可能
       allow read: if true;
       // 管理者のみ作成・更新・削除可能
-      allow write: if request.auth != null && request.auth.token.admin == true;
+      allow write: if isAuthenticated() && isAdminEmail();
     }
     
     match /blogTags/{tagId} {
       // 誰でも読み取り可能
       allow read: if true;
       // 管理者のみ作成・更新・削除可能
-      allow write: if request.auth != null && request.auth.token.admin == true;
+      allow write: if isAuthenticated() && isAdminEmail();
+    }
+    
+    // その他のコレクション（管理者のみ）
+    match /{document=**} {
+      allow read, write: if isAuthenticated() && isAdminEmail();
     }
   }
 }

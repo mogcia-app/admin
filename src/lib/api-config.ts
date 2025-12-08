@@ -42,11 +42,6 @@ export const API_ENDPOINTS = {
     stats: `${FUNCTIONS_BASE_URL}/getNotificationStats`,
   },
   
-  // エラー監視
-  monitoring: {
-    reportError: `${FUNCTIONS_BASE_URL}/reportError`,
-  },
-  
   // ツール側メンテナンス制御
   toolMaintenance: {
     setMode: `${FUNCTIONS_BASE_URL}/setToolMaintenanceMode`,
@@ -68,12 +63,29 @@ export const apiRequest = async (url: string, options: RequestInit = {}) => {
     const response = await fetch(url, defaultOptions)
     
     if (!response.ok) {
+      // 404エラーの場合は詳細なメッセージを返す
+      if (response.status === 404) {
+        throw new Error(`API endpoint not found (404): ${url}. The Cloud Function may not be deployed yet.`)
+      }
       throw new Error(`HTTP error! status: ${response.status}`)
     }
     
     return await response.json()
   } catch (error) {
-    console.error('API request failed:', error)
+    // NetworkErrorやFailed to fetchの場合も詳細な情報を提供
+    if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+      console.error('API request failed - Network error:', {
+        url,
+        error: error.message,
+        hint: 'This may indicate that the Cloud Function is not deployed or the URL is incorrect.'
+      })
+      throw new Error(`Failed to fetch: ${url}. The Cloud Function may not be deployed yet.`)
+    }
+    
+    console.error('API request failed:', {
+      url,
+      error: error instanceof Error ? error.message : String(error)
+    })
     throw error
   }
 }

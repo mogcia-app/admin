@@ -1,13 +1,14 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Users, Plus, Search, Edit, Trash2, Eye, Loader2, Calendar, DollarSign, Building } from 'lucide-react'
+import { Users, Plus, Search, Edit, Trash2, Eye, Loader2, Calendar, Building, ChevronDown, ChevronUp, Building2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { UserModal } from '@/components/users/user-modal'
 import { User } from '@/types'
 import { useUsers, useUserStats } from '@/hooks/useUsers'
 import { userService } from '@/lib/firebase-admin'
+import { useCompanies } from '@/hooks/useCompanies'
 
 // SNSアイコンマッピング
 const snsIcons = {
@@ -27,6 +28,7 @@ const snsLabels = {
 export default function UsersPage() {
   const { users, loading, error, addUser, editUser, removeUser } = useUsers()
   const { stats } = useUserStats()
+  const { companies } = useCompanies()
   const [filteredUsers, setFilteredUsers] = useState<User[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedStatus, setSelectedStatus] = useState<string>('all')
@@ -212,7 +214,7 @@ export default function UsersPage() {
       </div>
 
       {/* 統計情報 */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">総利用者数</CardTitle>
@@ -249,15 +251,6 @@ export default function UsersPage() {
             <div className="text-2xl font-bold">{stats.annualUsers}</div>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">月間売上</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(stats.monthlyRevenue)}</div>
-          </CardContent>
-        </Card>
       </div>
 
       {/* 検索・フィルター */}
@@ -272,6 +265,24 @@ export default function UsersPage() {
             className="pl-10 pr-4 py-2 w-full bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           />
         </div>
+        {/* URLパラメータから企業IDを取得してモーダルを開く */}
+        {typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('companyId') && (
+          <Button
+            variant="outline"
+            onClick={() => {
+              const companyId = new URLSearchParams(window.location.search).get('companyId')
+              if (companyId) {
+                setShowCreateModal(true)
+                // モーダルが開いた後にcompanyIdを設定する必要があるため、
+                // ここではモーダルを開くだけで、companyIdの設定はモーダル側で行う
+                window.history.replaceState({}, '', '/users')
+              }
+            }}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            この企業のユーザーを追加
+          </Button>
+        )}
         <select
           value={selectedStatus}
           onChange={(e) => setSelectedStatus(e.target.value)}
@@ -293,7 +304,7 @@ export default function UsersPage() {
         </select>
       </div>
 
-      {/* 利用者一覧 */}
+      {/* 利用者一覧 - テーブル形式 */}
       <div>
         <div className="mb-4">
           <h2 className="text-xl font-semibold">利用者一覧</h2>
@@ -301,117 +312,140 @@ export default function UsersPage() {
             {filteredUsers.length} 人の利用者が見つかりました
           </p>
         </div>
-        <div className="space-y-4">
-          {filteredUsers.map((user) => (
-            <Card key={user.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className="space-y-3 flex-1">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
-                        <span className="text-sm font-medium text-primary-foreground">
-                          {user.name.charAt(0)}
-                        </span>
-                      </div>
-                      <div>
-                        <h3 className="font-medium text-lg">{user.name}</h3>
-                        <p className="text-sm text-muted-foreground">{user.email}</p>
-                      </div>
-                      <div className="flex gap-2">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(user.status)}`}>
-                          {getStatusLabel(user.status)}
-                        </span>
-                        <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-medium">
-                          {getContractTypeLabel(user.contractType)}
-                        </span>
-                        <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full font-medium">
-                          {getUsageTypeLabel(user.usageType)}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                      <div>
-                        <p className="font-medium flex items-center gap-1">
-                          <Building className="h-4 w-4" />
-                          事業情報
-                        </p>
-                        <p className="text-muted-foreground">{user.businessInfo.industry}</p>
-                        <p className="text-muted-foreground">{user.businessInfo.companySize === 'individual' ? '個人' : user.businessInfo.companySize === 'small' ? '小規模' : user.businessInfo.companySize === 'medium' ? '中規模' : '大規模'}</p>
-                      </div>
-                      
-                      <div>
-                        <p className="font-medium">契約SNS</p>
-                        <div className="flex gap-1 mt-1">
-                          {user.contractSNS.map((sns) => (
+        <Card>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto max-h-[calc(100vh-400px)]">
+              <table className="w-full border-collapse">
+                <thead className="sticky top-0 z-10">
+                  <tr className="border-b bg-muted/50">
+                    <th className="px-4 py-3 text-left text-sm font-medium sticky left-0 bg-muted/50 z-10 min-w-[150px]">名前</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium min-w-[200px]">メール</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium min-w-[100px]">ステータス</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium min-w-[110px]">契約タイプ</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium min-w-[150px]">所属企業</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium min-w-[120px]">業界</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium min-w-[100px]">契約SNS</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium min-w-[120px]">契約終了日</th>
+                    <th className="px-4 py-3 text-right text-sm font-medium sticky right-0 bg-muted/50 z-10 min-w-[120px]">操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredUsers.map((user, index) => (
+                    <tr 
+                      key={user.id} 
+                      className={`border-b hover:bg-muted/50 transition-colors ${index % 2 === 0 ? 'bg-background' : 'bg-muted/10'}`}
+                    >
+                      <td className="px-4 py-3 sticky left-0 bg-inherit z-0">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
+                            <span className="text-xs font-medium text-primary-foreground">
+                              {user.name.charAt(0)}
+                            </span>
+                          </div>
+                          <span className="font-medium whitespace-nowrap">{user.name}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">
+                        {user.email}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center">
+                          <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${getStatusColor(user.status)}`}>
+                            {getStatusLabel(user.status)}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center">
+                          <span className="inline-block px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-medium whitespace-nowrap">
+                            {getContractTypeLabel(user.contractType)}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        {user.companyId ? (
+                          <div className="flex items-center gap-1">
+                            <Building2 className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-muted-foreground whitespace-nowrap">
+                              {companies.find(c => c.id === user.companyId)?.name || '不明な企業'}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">
+                        {user.businessInfo.industry || '-'}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-1 items-center">
+                          {user.contractSNS.slice(0, 2).map((sns) => (
                             <span
                               key={sns}
-                              className="inline-flex items-center gap-1 px-2 py-1 bg-muted text-muted-foreground text-xs rounded"
+                              className="inline-flex items-center gap-1 text-xs"
                               title={snsLabels[sns]}
                             >
-                              {snsIcons[sns]} {snsLabels[sns]}
+                              {snsIcons[sns]}
                             </span>
                           ))}
+                          {user.contractSNS.length > 2 && (
+                            <span className="text-xs text-muted-foreground whitespace-nowrap">
+                              +{user.contractSNS.length - 2}
+                            </span>
+                          )}
                         </div>
-                      </div>
-
-                      <div>
-                        <p className="font-medium">契約期間</p>
-                        <p className="text-muted-foreground">
-                          {new Date(user.contractStartDate).toLocaleDateString('ja-JP')} - {new Date(user.contractEndDate).toLocaleDateString('ja-JP')}
-                        </p>
-                        {user.billingInfo && (
-                          <p className="text-muted-foreground">
-                            {formatCurrency(user.billingInfo.monthlyFee)}/月
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="text-sm">
-                      <p className="font-medium">事業内容</p>
-                      <p className="text-muted-foreground line-clamp-2">{user.businessInfo.description}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 ml-4">
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => openDetailModal(user)}
-                      title="詳細表示"
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => openEditModal(user)}
-                      title="編集"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => handleDeleteUser(user.id)}
-                      title="削除"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">
+                        {new Date(user.contractEndDate).toLocaleDateString('ja-JP', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        })}
+                      </td>
+                      <td className="px-4 py-3 sticky right-0 bg-inherit z-0">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => openDetailModal(user)}
+                            title="詳細表示"
+                            className="h-8 w-8 p-0"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => openEditModal(user)}
+                            title="編集"
+                            className="h-8 w-8 p-0"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleDeleteUser(user.id)}
+                            title="削除"
+                            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {filteredUsers.length === 0 && (
+                <div className="text-center py-12">
+                  <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p className="text-muted-foreground">該当する利用者が見つかりませんでした。</p>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
-
-          {filteredUsers.length === 0 && (
-            <div className="text-center py-12">
-              <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p className="text-muted-foreground">該当する利用者が見つかりませんでした。</p>
+              )}
             </div>
-          )}
-        </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* 詳細モーダル（簡易版） */}
@@ -566,8 +600,14 @@ export default function UsersPage() {
       {/* モーダル */}
       <UserModal
         isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
+        onClose={() => {
+          setShowCreateModal(false)
+          if (typeof window !== 'undefined') {
+            window.history.replaceState({}, '', '/users')
+          }
+        }}
         onSave={handleCreateUser}
+        preselectedCompanyId={typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('companyId') || undefined : undefined}
       />
       
       <UserModal

@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { FeatureControlCard } from '@/components/access-control/feature-control-card'
 import { SystemStatusCard } from '@/components/access-control/system-status-card'
-import { useAccessControl, useSystemStatus } from '@/hooks/useAccessControl'
+import { EmergencySecurityCard } from '@/components/access-control/emergency-security-card'
+import { useAccessControl, useSystemStatus, useEmergencySecurityMode } from '@/hooks/useAccessControl'
 import { API_ENDPOINTS, apiPost, apiGet } from '@/lib/api-config'
 
 export default function AccessControlPage() {
@@ -28,7 +29,16 @@ export default function AccessControlPage() {
     refreshSystemStatus 
   } = useSystemStatus()
   
-  const [activeTab, setActiveTab] = useState<'features' | 'system' | 'tool'>('features')
+  const {
+    currentMode: emergencyMode,
+    presets,
+    loading: emergencyLoading,
+    error: emergencyError,
+    activateMode,
+    deactivateMode
+  } = useEmergencySecurityMode()
+  
+  const [activeTab, setActiveTab] = useState<'features' | 'system' | 'tool' | 'emergency'>('features')
   
   // ツール側メンテナンス状態
   const [toolMaintenance, setToolMaintenance] = useState({
@@ -53,8 +63,22 @@ export default function AccessControlPage() {
         setToolMaintenance(response.data)
       }
     } catch (err) {
-      console.error('Error fetching tool maintenance status:', err)
-      setToolMaintenanceError('ツール側メンテナンス状態の取得に失敗しました')
+      // CORSエラーやAPI未実装の場合は、エラーを表示せずにデフォルト値を維持
+      const error = err instanceof Error ? err.message : String(err)
+      const isCorsError = error.includes('CORS') || error.includes('Failed to fetch')
+      const isNetworkError = error.includes('404') || error.includes('NetworkError') || error.includes('ERR_FAILED')
+      
+      if (isCorsError || isNetworkError) {
+        // APIエンドポイントが未実装またはCORS設定不足の場合は、エラーメッセージを設定せずにデフォルト状態を維持
+        setToolMaintenanceError(null)
+        // コンソールには警告のみ（開発時のみ）
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('Tool maintenance API endpoint not available or CORS not configured. Using default state.')
+        }
+      } else {
+        // その他のエラーは表示
+        setToolMaintenanceError('ツール側メンテナンス状態の取得に失敗しました')
+      }
     } finally {
       setToolMaintenanceLoading(false)
     }
@@ -80,7 +104,17 @@ export default function AccessControlPage() {
       }
     } catch (err) {
       console.error('Error setting tool maintenance mode:', err)
-      setToolMaintenanceError('ツール側メンテナンスモードの設定に失敗しました')
+      const error = err instanceof Error ? err.message : String(err)
+      const isCorsError = error.includes('CORS') || error.includes('Failed to fetch')
+      const isNetworkError = error.includes('404') || error.includes('NetworkError') || error.includes('ERR_FAILED')
+      
+      if (isCorsError || isNetworkError) {
+        // APIエンドポイントが未実装またはCORS設定不足の場合
+        alert('ツール側メンテナンス機能はまだ実装されていません。\n\nCloud Functionsの実装とCORS設定が必要です。\n\n実装予定の場合は、Functions側でCORSヘッダーを設定してください。')
+        setToolMaintenanceError('APIエンドポイントが実装されていないか、CORS設定が必要です')
+      } else {
+        setToolMaintenanceError('ツール側メンテナンスモードの設定に失敗しました')
+      }
     } finally {
       setToolMaintenanceLoading(false)
     }
@@ -108,6 +142,7 @@ export default function AccessControlPage() {
   }
 
   const tabs = [
+    { id: 'emergency', label: '緊急セキュリティ', icon: '🚨' },
     { id: 'features', label: '機能制御', icon: '⚙️' },
     { id: 'system', label: 'システム状況', icon: '🖥️' },
     { id: 'tool', label: 'ツール側メンテナンス', icon: '🔧' }
@@ -121,9 +156,9 @@ export default function AccessControlPage() {
           <h1 className="text-3xl font-bold tracking-tight">アクセス制御</h1>
           <p className="text-muted-foreground">
             アプリケーション機能の有効化・メンテナンスモード・システム監視
-            {(error || statusError) && (
+            {(error || statusError || emergencyError) && (
               <span className="text-destructive ml-2">
-                ({error || statusError})
+                ({error || statusError || emergencyError})
               </span>
             )}
           </p>
@@ -203,6 +238,25 @@ export default function AccessControlPage() {
 
       {/* コンテンツエリア */}
       <div className="space-y-6">
+        {activeTab === 'emergency' && (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-xl font-semibold mb-4">緊急セキュリティモード</h2>
+              <p className="text-muted-foreground mb-6">
+                脆弱性発見時など、緊急時にユーザーアクセスを制限します。全ブロックまたは部分ブロックが可能です。
+              </p>
+            </div>
+            
+            <EmergencySecurityCard
+              currentMode={emergencyMode}
+              presets={presets}
+              onActivate={activateMode}
+              onDeactivate={deactivateMode}
+              loading={emergencyLoading}
+            />
+          </div>
+        )}
+
         {activeTab === 'features' && (
           <div className="space-y-6">
             <div>
@@ -277,6 +331,35 @@ export default function AccessControlPage() {
               <p className="text-muted-foreground mb-6">
                 別プロジェクト（ツール側）のメンテナンスモードを制御します。
               </p>
+              {(toolMaintenanceError === null || toolMaintenanceError.includes('APIエンドポイント') || toolMaintenanceError.includes('CORS')) && (
+                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded">
+                  <p className="text-sm text-blue-800">
+                    <AlertTriangle className="h-4 w-4 inline mr-1" />
+                    <strong>情報:</strong> ツール側メンテナンス機能は、Cloud Functionsの実装とCORS設定が必要です。現在はローカルの状態のみ表示されます。
+                  </p>
+                  <details className="mt-2 text-xs text-blue-700">
+                    <summary className="cursor-pointer hover:text-blue-900">実装時の設定方法</summary>
+                    <div className="mt-2 p-2 bg-blue-100 rounded">
+                      <p className="mb-1"><strong>Cloud Functionsで実装する場合:</strong></p>
+                      <pre className="text-xs bg-white p-2 rounded overflow-x-auto">
+{`exports.getToolMaintenanceStatus = functions.https.onRequest((req, res) => {
+  // CORS設定
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type');
+  
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+  
+  // 実装...
+});`}
+                      </pre>
+                    </div>
+                  </details>
+                </div>
+              )}
             </div>
 
             {/* 現在の状態 */}
@@ -293,7 +376,7 @@ export default function AccessControlPage() {
                     <Loader2 className="h-4 w-4 animate-spin" />
                     <span>状態を取得中...</span>
                   </div>
-                ) : toolMaintenanceError ? (
+                ) : toolMaintenanceError && !toolMaintenanceError.includes('APIエンドポイント') ? (
                   <div className="text-red-600">
                     <p>{toolMaintenanceError}</p>
                     <Button 

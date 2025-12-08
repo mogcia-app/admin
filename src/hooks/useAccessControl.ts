@@ -1,9 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { 
   AppAccessControl, 
-  SystemStatus 
+  SystemStatus,
+  EmergencySecurityMode,
+  SecurityPreset
 } from '@/types'
 import { 
   getAccessControlSettings, 
@@ -13,7 +15,11 @@ import {
   toggleFeature,
   toggleMaintenanceMode,
   getSystemStatus,
-  updateSystemStatus
+  updateSystemStatus,
+  getEmergencySecurityMode,
+  activateEmergencySecurityMode,
+  deactivateEmergencySecurityMode,
+  getSecurityPresets
 } from '@/lib/access-control'
 import { useAuth } from '@/contexts/auth-context'
 
@@ -261,5 +267,92 @@ export function useFeatureAccess(feature: string) {
     isFeatureEnabled,
     isInMaintenance,
     maintenanceMessage
+  }
+}
+
+export function useEmergencySecurityMode() {
+  const { adminUser } = useAuth()
+  const [currentMode, setCurrentMode] = useState<EmergencySecurityMode | null>(null)
+  const [presets, setPresets] = useState<SecurityPreset[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchMode = useCallback(async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const mode = await getEmergencySecurityMode()
+      setCurrentMode(mode)
+    } catch (err) {
+      console.error('Error fetching emergency security mode:', err)
+      // Firestoreエラーの場合は、エラーを無視してデフォルト状態を維持
+      const errorMessage = err instanceof Error ? err.message : String(err)
+      if (errorMessage.includes('Missing or insufficient permissions')) {
+        // 権限エラーの場合は、デフォルト状態を維持
+        setError(null)
+      } else {
+        setError(err instanceof Error ? err.message : '緊急セキュリティモードの取得に失敗しました')
+      }
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  const fetchPresets = useCallback(async () => {
+    try {
+      const presetData = await getSecurityPresets()
+      setPresets(presetData)
+    } catch (err) {
+      console.error('Error fetching security presets:', err)
+      // エラーが発生しても空配列を設定
+      setPresets([])
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchMode()
+    fetchPresets()
+    
+    // 30秒ごとに状態を確認
+    const interval = setInterval(() => {
+      fetchMode()
+    }, 30000)
+    return () => clearInterval(interval)
+  }, [fetchMode, fetchPresets])
+
+  const activateMode = useCallback(async (modeData: Omit<EmergencySecurityMode, 'id' | 'isActive' | 'startedAt' | 'startedBy'>) => {
+    try {
+      setError(null)
+      const userId = adminUser?.id || 'unknown'
+      await activateEmergencySecurityMode(modeData, userId)
+      await fetchMode()
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : '緊急セキュリティモードの有効化に失敗しました'
+      setError(errorMessage)
+      throw new Error(errorMessage)
+    }
+  }, [adminUser?.id, fetchMode])
+
+  const deactivateMode = useCallback(async (modeId: string) => {
+    try {
+      setError(null)
+      const userId = adminUser?.id || 'unknown'
+      await deactivateEmergencySecurityMode(modeId, userId)
+      await fetchMode()
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : '緊急セキュリティモードの無効化に失敗しました'
+      setError(errorMessage)
+      throw new Error(errorMessage)
+    }
+  }, [adminUser?.id, fetchMode])
+
+  return {
+    currentMode,
+    presets,
+    loading,
+    error,
+    activateMode,
+    deactivateMode,
+    refresh: fetchMode
   }
 }
