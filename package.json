@@ -18,7 +18,7 @@
     "firebase": "^10.7.1",
     "firebase-admin": "^13.5.0",
     "lucide-react": "^0.544.0",
-    "next": "15.5.7",
+    "next": "15.5.9",
     "openai": "^5.20.3",
     "react": "19.1.2",
     "react-dom": "19.1.2",
