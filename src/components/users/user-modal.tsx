@@ -5,8 +5,9 @@ import { createPortal } from 'react-dom'
 import { X, Save, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { User, SNSAISettings, BusinessInfo, BillingInfo, Company } from '@/types'
+import { User, SNSAISettings, BusinessInfo, BillingInfo, Company, AIInitialSettings } from '@/types'
 import { useCompanies } from '@/hooks/useCompanies'
+import { getPlanList, getPlanName, getUserPlanTier } from '@/lib/plan-access'
 
 interface UserModalProps {
   isOpen: boolean
@@ -79,7 +80,19 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
       currency: 'JPY',
       paymentMethod: 'credit_card',
       nextBillingDate: '',
-      paymentStatus: 'paid'
+      paymentStatus: 'paid',
+      requiresStripeSetup: false
+    },
+    planTier: 'ume', // デフォルトは梅プラン
+    aiInitialSettings: {
+      defaultTone: 'professional',
+      defaultLanguage: 'ja',
+      contentPreferences: {
+        preferredLength: 'medium',
+        hashtagStrategy: 'moderate',
+        emojiUsage: 'moderate'
+      },
+      enabledFeatures: []
     },
     notes: ''
   })
@@ -137,11 +150,23 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
         contractEndDate: endDate.toISOString(),
         billingInfo: {
           plan: 'trial',
-          monthlyFee: 0,
+          monthlyFee: 15000, // デフォルトは梅プラン
           currency: 'JPY',
           paymentMethod: 'credit_card',
           nextBillingDate: endDate.toISOString(),
-          paymentStatus: 'paid'
+          paymentStatus: 'paid',
+          requiresStripeSetup: true
+        },
+        planTier: 'ume', // デフォルトは梅プラン
+        aiInitialSettings: {
+          defaultTone: 'professional',
+          defaultLanguage: 'ja',
+          contentPreferences: {
+            preferredLength: 'medium',
+            hashtagStrategy: 'moderate',
+            emojiUsage: 'moderate'
+          },
+          enabledFeatures: []
         },
         notes: '',
         companyId: preselectedCompanyId || undefined
@@ -474,6 +499,40 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
                     選択中の企業: {companies.find(c => c.id === formData.companyId)?.name}
                   </p>
                 )}
+              </div>
+
+              {/* プラン階層選択（会員サイト向け） */}
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  プラン階層 *
+                  <span className="text-xs text-muted-foreground ml-2">
+                    会員サイトでの機能アクセスを制御します
+                  </span>
+                </label>
+                <select
+                  value={formData.planTier || 'ume'}
+                  onChange={(e) => {
+                    const selectedTier = e.target.value as 'ume' | 'take' | 'matsu'
+                    setFormData({ 
+                      ...formData, 
+                      planTier: selectedTier,
+                      billingInfo: {
+                        ...formData.billingInfo!,
+                        monthlyFee: selectedTier === 'ume' ? 15000 : selectedTier === 'take' ? 30000 : 60000
+                      }
+                    })
+                  }}
+                  className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  {getPlanList().map((plan) => (
+                    <option key={plan.value} value={plan.value}>
+                      {plan.label} (¥{plan.price.toLocaleString()}/月)
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  現在選択: {getPlanName(formData.planTier || 'ume')}
+                </p>
               </div>
 
               <div className="grid grid-cols-4 gap-4">
@@ -1006,7 +1065,7 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    SNS契約数に応じて自動設定されます
+                    プラン階層に応じて自動設定されます（会員サイト）
                   </p>
                 </div>
 
@@ -1014,16 +1073,63 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
                   <label className="block text-sm font-medium mb-2">支払い方法</label>
                   <select
                     value={formData.billingInfo?.paymentMethod || 'credit_card'}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      billingInfo: { ...formData.billingInfo!, paymentMethod: e.target.value as any }
-                    })}
+                    onChange={(e) => {
+                      const paymentMethod = e.target.value as 'credit_card' | 'bank_transfer' | 'invoice'
+                      setFormData({
+                        ...formData,
+                        billingInfo: { 
+                          ...formData.billingInfo!, 
+                          paymentMethod,
+                          requiresStripeSetup: paymentMethod === 'credit_card' && !formData.billingInfo?.stripeCustomerId
+                        }
+                      })
+                    }}
                     className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
                   >
-                    <option value="credit_card">クレジットカード</option>
+                    <option value="credit_card">クレジットカード（Stripe）</option>
                     <option value="bank_transfer">銀行振込</option>
                     <option value="invoice">請求書</option>
                   </select>
+                  {formData.billingInfo?.paymentMethod === 'credit_card' && (
+                    <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                      <p className="text-sm font-medium text-blue-900 mb-1">Stripe決済設定</p>
+                      {formData.billingInfo.stripeCustomerId ? (
+                        <div className="space-y-1 text-xs text-blue-800">
+                          <p>✓ 顧客ID: {formData.billingInfo.stripeCustomerId}</p>
+                          {formData.billingInfo.stripePaymentMethodId && (
+                            <p>✓ 支払い方法ID: {formData.billingInfo.stripePaymentMethodId}</p>
+                          )}
+                          {formData.billingInfo.requiresStripeSetup && (
+                            <p className="text-orange-600">⚠ 会員サイト側で初期決済設定が必要です</p>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="space-y-1 text-xs text-blue-800">
+                          <p className="text-orange-600 font-medium">
+                            ⚠ 会員サイト側でStripe初期決済設定が必要です
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            ログイン後、支払い設定ページでStripe決済を設定できます
+                          </p>
+                          <label className="flex items-center gap-2 mt-2">
+                            <input
+                              type="checkbox"
+                              checked={formData.billingInfo.requiresStripeSetup || false}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                billingInfo: { 
+                                  ...formData.billingInfo!, 
+                                  requiresStripeSetup: e.target.checked
+                                }
+                              })}
+                              className="rounded border-border"
+                            />
+                            <span className="text-xs">初期設定が必要であることをマーク</span>
+                          </label>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -1040,6 +1146,160 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
                     <option value="pending">支払い待ち</option>
                     <option value="overdue">延滞</option>
                   </select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* AI初期設定（会員サイト向け） */}
+          <Card>
+            <CardHeader>
+              <CardTitle>AI初期設定</CardTitle>
+              <CardDescription>
+                会員サイトでのAI機能のデフォルト設定を行います
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">デフォルトトーン</label>
+                  <select
+                    value={formData.aiInitialSettings?.defaultTone || 'professional'}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      aiInitialSettings: {
+                        ...formData.aiInitialSettings!,
+                        defaultTone: e.target.value
+                      }
+                    })}
+                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <option value="professional">プロフェッショナル</option>
+                    <option value="casual">カジュアル</option>
+                    <option value="friendly">フレンドリー</option>
+                    <option value="formal">フォーマル</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">デフォルト言語</label>
+                  <select
+                    value={formData.aiInitialSettings?.defaultLanguage || 'ja'}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      aiInitialSettings: {
+                        ...formData.aiInitialSettings!,
+                        defaultLanguage: e.target.value as 'ja' | 'en'
+                      }
+                    })}
+                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <option value="ja">日本語</option>
+                    <option value="en">English</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">推奨コンテンツ長</label>
+                  <select
+                    value={formData.aiInitialSettings?.contentPreferences?.preferredLength || 'medium'}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      aiInitialSettings: {
+                        ...formData.aiInitialSettings!,
+                        contentPreferences: {
+                          ...formData.aiInitialSettings?.contentPreferences,
+                          preferredLength: e.target.value as 'short' | 'medium' | 'long'
+                        }
+                      }
+                    })}
+                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <option value="short">短め</option>
+                    <option value="medium">中程度</option>
+                    <option value="long">長め</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">ハッシュタグ戦略</label>
+                  <select
+                    value={formData.aiInitialSettings?.contentPreferences?.hashtagStrategy || 'moderate'}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      aiInitialSettings: {
+                        ...formData.aiInitialSettings!,
+                        contentPreferences: {
+                          ...formData.aiInitialSettings?.contentPreferences,
+                          hashtagStrategy: e.target.value as 'minimal' | 'moderate' | 'aggressive'
+                        }
+                      }
+                    })}
+                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <option value="minimal">最小限</option>
+                    <option value="moderate">適度</option>
+                    <option value="aggressive">積極的</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">絵文字使用頻度</label>
+                  <select
+                    value={formData.aiInitialSettings?.contentPreferences?.emojiUsage || 'moderate'}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      aiInitialSettings: {
+                        ...formData.aiInitialSettings!,
+                        contentPreferences: {
+                          ...formData.aiInitialSettings?.contentPreferences,
+                          emojiUsage: e.target.value as 'none' | 'minimal' | 'moderate' | 'frequent'
+                        }
+                      }
+                    })}
+                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <option value="none">なし</option>
+                    <option value="minimal">最小限</option>
+                    <option value="moderate">適度</option>
+                    <option value="frequent">頻繁</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">有効化された機能</label>
+                <div className="space-y-2">
+                  {['auto-hashtag', 'schedule-optimization', 'content-suggestion', 'analytics-insight'].map((feature) => (
+                    <label key={feature} className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={formData.aiInitialSettings?.enabledFeatures?.includes(feature) || false}
+                        onChange={(e) => {
+                          const currentFeatures = formData.aiInitialSettings?.enabledFeatures || []
+                          const newFeatures = e.target.checked
+                            ? [...currentFeatures, feature]
+                            : currentFeatures.filter(f => f !== feature)
+                          setFormData({
+                            ...formData,
+                            aiInitialSettings: {
+                              ...formData.aiInitialSettings!,
+                              enabledFeatures: newFeatures
+                            }
+                          })
+                        }}
+                        className="rounded border-border"
+                      />
+                      <span className="text-sm">
+                        {feature === 'auto-hashtag' && '自動ハッシュタグ生成'}
+                        {feature === 'schedule-optimization' && '投稿スケジュール最適化'}
+                        {feature === 'content-suggestion' && 'コンテンツ提案'}
+                        {feature === 'analytics-insight' && '分析インサイト'}
+                      </span>
+                    </label>
+                  ))}
                 </div>
               </div>
             </CardContent>

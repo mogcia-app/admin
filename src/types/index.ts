@@ -23,6 +23,10 @@ export interface User {
   password?: string
   // 企業管理（B2B向け）
   companyId?: string // 所属企業ID（企業向け販売の場合）
+  // プラン階層（会員サイト向け）
+  planTier?: 'ume' | 'take' | 'matsu' // 梅・竹・松プラン
+  // AI初期設定
+  aiInitialSettings?: AIInitialSettings
 }
 
 export interface AdminLayoutProps {
@@ -165,6 +169,11 @@ export interface BillingInfo {
   paymentMethod: 'credit_card' | 'bank_transfer' | 'invoice'
   nextBillingDate: string
   paymentStatus: 'paid' | 'pending' | 'overdue'
+  // Stripe関連（クレジット決済の場合）
+  stripeCustomerId?: string // Stripe顧客ID
+  stripePaymentMethodId?: string // Stripe支払い方法ID
+  stripeSetupIntentId?: string // Stripe初期設定インテントID（会員サイト側で設定するため）
+  requiresStripeSetup?: boolean // Stripe初期設定が必要かどうか
 }
 
 // ユーザー統計情報
@@ -564,4 +573,53 @@ export interface CompanyBillingInfo {
   paymentMethod: 'credit_card' | 'bank_transfer' | 'invoice'
   nextBillingDate?: string
   paymentStatus: 'paid' | 'pending' | 'overdue'
+}
+
+// AI初期設定（会員サイト向け）
+export interface AIInitialSettings {
+  // 基本設定
+  defaultTone?: string // デフォルトのトーン（例: 'professional', 'casual', 'friendly'）
+  defaultLanguage?: 'ja' | 'en' // デフォルト言語
+  contentPreferences?: {
+    preferredLength?: 'short' | 'medium' | 'long' // コンテンツ長さの好み
+    hashtagStrategy?: 'minimal' | 'moderate' | 'aggressive' // ハッシュタグ戦略
+    emojiUsage?: 'none' | 'minimal' | 'moderate' | 'frequent' // 絵文字使用頻度
+  }
+  // SNS別設定
+  snsSettings?: {
+    instagram?: AIPlatformSettings
+    x?: AIPlatformSettings
+    tiktok?: AIPlatformSettings
+  }
+  // コンテンツ生成のデフォルト値
+  contentDefaults?: {
+    postFrequency?: string // 投稿頻度の推奨値
+    postingTime?: string[] // 推奨投稿時間
+    contentTypeRatio?: { // コンテンツタイプの比率
+      feed?: number
+      reel?: number
+      story?: number
+    }
+  }
+  // 有効化された機能
+  enabledFeatures?: string[] // 例: ['auto-hashtag', 'schedule-optimization', 'content-suggestion']
+  updatedAt?: string
+}
+
+export interface AIPlatformSettings {
+  enabled: boolean
+  defaultFormat?: string // デフォルトフォーマット
+  contentStyle?: string // コンテンツスタイル
+  targetAudience?: string // ターゲットオーディエンス
+}
+
+// プラン変更履歴
+export interface PlanHistory {
+  id: string
+  userId: string
+  from: 'ume' | 'take' | 'matsu' | null
+  to: 'ume' | 'take' | 'matsu'
+  changedBy: string // AdminユーザーID
+  reason?: string // 変更理由
+  changedAt: string
 }

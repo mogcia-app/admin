@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Users, Plus, Search, Edit, Trash2, Eye, Loader2, Calendar, Building, ChevronDown, ChevronUp, Building2 } from 'lucide-react'
+import { Users, Plus, Search, Edit, Trash2, Eye, Loader2, Calendar, Building, ChevronDown, ChevronUp, Building2, X, Filter } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { UserModal } from '@/components/users/user-modal'
@@ -9,6 +9,9 @@ import { User } from '@/types'
 import { useUsers, useUserStats } from '@/hooks/useUsers'
 import { userService } from '@/lib/firebase-admin'
 import { useCompanies } from '@/hooks/useCompanies'
+import { getPlanName, getUserPlanTier } from '@/lib/plan-access'
+import { recordPlanHistory } from '@/lib/plan-history'
+import { useAuth } from '@/contexts/auth-context'
 
 // SNSアイコンマッピング
 const snsIcons = {
@@ -29,10 +32,12 @@ export default function UsersPage() {
   const { users, loading, error, addUser, editUser, removeUser } = useUsers()
   const { stats } = useUserStats()
   const { companies } = useCompanies()
+  const { user: currentAdminUser } = useAuth()
   const [filteredUsers, setFilteredUsers] = useState<User[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedStatus, setSelectedStatus] = useState<string>('all')
   const [selectedContractType, setSelectedContractType] = useState<string>('all')
+  const [selectedPlanTier, setSelectedPlanTier] = useState<string>('all')
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
@@ -52,18 +57,23 @@ export default function UsersPage() {
       filtered = filtered.filter(user => user.contractType === selectedContractType)
     }
 
+    // プラン階層フィルター
+    if (selectedPlanTier !== 'all') {
+      filtered = filtered.filter(user => getUserPlanTier(user) === selectedPlanTier)
+    }
+
     // 検索クエリフィルター
     if (searchQuery) {
       filtered = filtered.filter(user =>
         user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user.businessInfo.industry.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user.businessInfo.description.toLowerCase().includes(searchQuery.toLowerCase())
+        (user.businessInfo?.industry && user.businessInfo.industry.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (user.businessInfo?.description && user.businessInfo.description.toLowerCase().includes(searchQuery.toLowerCase()))
       )
     }
 
     setFilteredUsers(filtered)
-  }, [users, searchQuery, selectedStatus, selectedContractType])
+  }, [users, searchQuery, selectedStatus, selectedContractType, selectedPlanTier])
 
   const getStatusColor = (status: string) => {
     const colors = {
@@ -148,6 +158,26 @@ export default function UsersPage() {
     if (!selectedUser) return
     
     try {
+      // プラン階層が変更された場合、履歴を記録
+      if (userData.planTier && userData.planTier !== selectedUser.planTier) {
+        const fromPlan = (selectedUser.planTier || 'ume') as 'ume' | 'take' | 'matsu'
+        const toPlan = userData.planTier as 'ume' | 'take' | 'matsu'
+        const changedBy = currentAdminUser?.uid || currentAdminUser?.email || 'admin'
+        
+        try {
+          await recordPlanHistory(
+            selectedUser.id,
+            fromPlan === 'ume' ? null : fromPlan, // デフォルト値から変更する場合はnull
+            toPlan,
+            changedBy,
+            '管理者による手動変更'
+          )
+        } catch (historyError) {
+          console.error('Failed to record plan history:', historyError)
+          // 履歴記録の失敗は警告のみ（ユーザー更新は続行）
+        }
+      }
+
       await editUser(selectedUser.id, userData)
       setSelectedUser(null)
       alert('利用者情報を更新しました！')
@@ -254,162 +284,245 @@ export default function UsersPage() {
       </div>
 
       {/* 検索・フィルター */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <input
-            type="search"
-            placeholder="利用者を検索..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 pr-4 py-2 w-full bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          />
-        </div>
-        {/* URLパラメータから企業IDを取得してモーダルを開く */}
-        {typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('companyId') && (
-          <Button
-            variant="outline"
-            onClick={() => {
-              const companyId = new URLSearchParams(window.location.search).get('companyId')
-              if (companyId) {
-                setShowCreateModal(true)
-                // モーダルが開いた後にcompanyIdを設定する必要があるため、
-                // ここではモーダルを開くだけで、companyIdの設定はモーダル側で行う
-                window.history.replaceState({}, '', '/users')
-              }
-            }}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            この企業のユーザーを追加
-          </Button>
-        )}
-        <select
-          value={selectedStatus}
-          onChange={(e) => setSelectedStatus(e.target.value)}
-          className="px-3 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-        >
-          <option value="all">すべてのステータス</option>
-          <option value="active">アクティブ</option>
-          <option value="inactive">非アクティブ</option>
-          <option value="suspended">停止中</option>
-        </select>
-        <select
-          value={selectedContractType}
-          onChange={(e) => setSelectedContractType(e.target.value)}
-          className="px-3 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-        >
-          <option value="all">すべての契約</option>
-          <option value="annual">年間契約</option>
-          <option value="trial">お試し契約</option>
-        </select>
-      </div>
+      <Card>
+        <CardContent className="p-4">
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <input
+                  type="search"
+                  placeholder="名前、メール、業界で検索..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 pr-4 py-2 w-full bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring transition-colors"
+                />
+              </div>
+              {/* URLパラメータから企業IDを取得してモーダルを開く */}
+              {typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('companyId') && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    const companyId = new URLSearchParams(window.location.search).get('companyId')
+                    if (companyId) {
+                      setShowCreateModal(true)
+                      window.history.replaceState({}, '', '/users')
+                    }
+                  }}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  この企業のユーザーを追加
+                </Button>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium text-muted-foreground">フィルター:</span>
+              </div>
+              <select
+                value={selectedStatus}
+                onChange={(e) => setSelectedStatus(e.target.value)}
+                className="px-3 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
+              >
+                <option value="all">すべてのステータス</option>
+                <option value="active">アクティブ</option>
+                <option value="inactive">非アクティブ</option>
+                <option value="suspended">停止中</option>
+              </select>
+              <select
+                value={selectedContractType}
+                onChange={(e) => setSelectedContractType(e.target.value)}
+                className="px-3 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
+              >
+                <option value="all">すべての契約</option>
+                <option value="annual">年間契約</option>
+                <option value="trial">お試し契約</option>
+              </select>
+              <select
+                value={selectedPlanTier}
+                onChange={(e) => setSelectedPlanTier(e.target.value)}
+                className="px-3 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
+              >
+                <option value="all">すべてのプラン</option>
+                <option value="ume">梅プラン</option>
+                <option value="take">竹プラン</option>
+                <option value="matsu">松プラン</option>
+              </select>
+              {(selectedStatus !== 'all' || selectedContractType !== 'all' || selectedPlanTier !== 'all' || searchQuery) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setSelectedStatus('all')
+                    setSelectedContractType('all')
+                    setSelectedPlanTier('all')
+                    setSearchQuery('')
+                  }}
+                  className="text-xs"
+                >
+                  <X className="h-3 w-3 mr-1" />
+                  リセット
+                </Button>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* 利用者一覧 - テーブル形式 */}
       <div>
-        <div className="mb-4">
-          <h2 className="text-xl font-semibold">利用者一覧</h2>
-          <p className="text-sm text-muted-foreground">
-            {filteredUsers.length} 人の利用者が見つかりました
-          </p>
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-semibold">利用者一覧</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              {filteredUsers.length} 人の利用者が見つかりました
+            </p>
+          </div>
         </div>
         <Card>
           <CardContent className="p-0">
-            <div className="overflow-x-auto max-h-[calc(100vh-400px)]">
+            <div className="overflow-x-auto max-h-[calc(100vh-420px)]">
               <table className="w-full border-collapse">
-                <thead className="sticky top-0 z-10">
-                  <tr className="border-b bg-muted/50">
-                    <th className="px-4 py-3 text-left text-sm font-medium sticky left-0 bg-muted/50 z-10 min-w-[150px]">名前</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium min-w-[200px]">メール</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium min-w-[100px]">ステータス</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium min-w-[110px]">契約タイプ</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium min-w-[150px]">所属企業</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium min-w-[120px]">業界</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium min-w-[100px]">契約SNS</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium min-w-[120px]">契約終了日</th>
-                    <th className="px-4 py-3 text-right text-sm font-medium sticky right-0 bg-muted/50 z-10 min-w-[120px]">操作</th>
+                <thead className="sticky top-0 z-20 bg-background">
+                  <tr className="border-b-2 border-border bg-muted/30">
+                    <th className="px-5 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider sticky left-0 bg-muted/30 z-20 min-w-[180px] backdrop-blur-sm">
+                      名前
+                    </th>
+                    <th className="px-5 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[220px]">
+                      メール
+                    </th>
+                    <th className="px-5 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[110px]">
+                      ステータス
+                    </th>
+                    <th className="px-5 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[120px]">
+                      プラン階層
+                    </th>
+                    <th className="px-5 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[120px]">
+                      契約タイプ
+                    </th>
+                    <th className="px-5 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[160px]">
+                      所属企業
+                    </th>
+                    <th className="px-5 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[130px]">
+                      業界
+                    </th>
+                    <th className="px-5 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[110px]">
+                      契約SNS
+                    </th>
+                    <th className="px-5 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[130px]">
+                      契約終了日
+                    </th>
+                    <th className="px-5 py-4 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider sticky right-0 bg-muted/30 z-20 min-w-[140px] backdrop-blur-sm">
+                      操作
+                    </th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="bg-background divide-y divide-border">
                   {filteredUsers.map((user, index) => (
                     <tr 
                       key={user.id} 
-                      className={`border-b hover:bg-muted/50 transition-colors ${index % 2 === 0 ? 'bg-background' : 'bg-muted/10'}`}
+                      className="hover:bg-muted/30 transition-colors cursor-pointer group"
+                      onClick={() => openDetailModal(user)}
                     >
-                      <td className="px-4 py-3 sticky left-0 bg-inherit z-0">
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
-                            <span className="text-xs font-medium text-primary-foreground">
+                      <td className="px-5 py-4 sticky left-0 bg-inherit z-10 group-hover:bg-muted/30">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/80 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
+                            <span className="text-sm font-semibold text-primary-foreground">
                               {user.name.charAt(0)}
                             </span>
                           </div>
-                          <span className="font-medium whitespace-nowrap">{user.name}</span>
+                          <div>
+                            <span className="font-semibold text-sm whitespace-nowrap block">{user.name}</span>
+                            {user.role && user.role !== 'user' && (
+                              <span className="text-xs text-muted-foreground">{user.role}</span>
+                            )}
+                          </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">
-                        {user.email}
+                      <td className="px-5 py-4 text-sm text-muted-foreground whitespace-nowrap">
+                        <a 
+                          href={`mailto:${user.email}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="hover:text-foreground transition-colors"
+                        >
+                          {user.email}
+                        </a>
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center">
-                          <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${getStatusColor(user.status)}`}>
-                            {getStatusLabel(user.status)}
-                          </span>
-                        </div>
+                      <td className="px-5 py-4">
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap shadow-sm ${getStatusColor(user.status)}`}>
+                          {getStatusLabel(user.status)}
+                        </span>
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center">
-                          <span className="inline-block px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-medium whitespace-nowrap">
-                            {getContractTypeLabel(user.contractType)}
-                          </span>
-                        </div>
+                      <td className="px-5 py-4">
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap shadow-sm ${
+                          user.planTier === 'ume' ? 'bg-pink-100 text-pink-700 border border-pink-200' :
+                          user.planTier === 'take' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' :
+                          user.planTier === 'matsu' ? 'bg-purple-100 text-purple-700 border border-purple-200' :
+                          'bg-gray-100 text-gray-700 border border-gray-200'
+                        }`}>
+                          {getPlanName(getUserPlanTier(user))}
+                        </span>
                       </td>
-                      <td className="px-4 py-3 text-sm">
+                      <td className="px-5 py-4">
+                        <span className="inline-flex items-center px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-200 text-xs rounded-full font-semibold whitespace-nowrap shadow-sm">
+                          {getContractTypeLabel(user.contractType)}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4 text-sm">
                         {user.companyId ? (
-                          <div className="flex items-center gap-1">
-                            <Building2 className="h-3 w-3 text-muted-foreground" />
-                            <span className="text-muted-foreground whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <Building2 className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                            <span className="text-muted-foreground whitespace-nowrap truncate max-w-[150px]" title={companies.find(c => c.id === user.companyId)?.name}>
                               {companies.find(c => c.id === user.companyId)?.name || '不明な企業'}
                             </span>
                           </div>
                         ) : (
-                          <span className="text-muted-foreground">-</span>
+                          <span className="text-muted-foreground italic">個人利用者</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">
-                        {user.businessInfo.industry || '-'}
+                      <td className="px-5 py-4 text-sm text-muted-foreground whitespace-nowrap">
+                        {user.businessInfo?.industry || <span className="italic text-muted-foreground">未設定</span>}
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex gap-1 items-center">
-                          {user.contractSNS.slice(0, 2).map((sns) => (
+                      <td className="px-5 py-4">
+                        <div className="flex gap-1.5 items-center flex-wrap">
+                          {user.contractSNS.slice(0, 3).map((sns) => (
                             <span
                               key={sns}
-                              className="inline-flex items-center gap-1 text-xs"
+                              className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-muted hover:bg-muted/80 transition-colors text-base"
                               title={snsLabels[sns]}
+                              onClick={(e) => e.stopPropagation()}
                             >
                               {snsIcons[sns]}
                             </span>
                           ))}
-                          {user.contractSNS.length > 2 && (
-                            <span className="text-xs text-muted-foreground whitespace-nowrap">
-                              +{user.contractSNS.length - 2}
+                          {user.contractSNS.length > 3 && (
+                            <span className="text-xs text-muted-foreground whitespace-nowrap font-medium" title={`他${user.contractSNS.length - 3}件`}>
+                              +{user.contractSNS.length - 3}
                             </span>
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">
-                        {new Date(user.contractEndDate).toLocaleDateString('ja-JP', {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric'
-                        })}
+                      <td className="px-5 py-4 text-sm">
+                        <div className="whitespace-nowrap">
+                          {new Date(user.contractEndDate).toLocaleDateString('ja-JP', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric'
+                          })}
+                          {new Date(user.contractEndDate) < new Date() && (
+                            <span className="ml-2 text-xs text-red-600 font-semibold">期限切れ</span>
+                          )}
+                        </div>
                       </td>
-                      <td className="px-4 py-3 sticky right-0 bg-inherit z-0">
-                        <div className="flex items-center justify-end gap-1">
+                      <td className="px-5 py-4 sticky right-0 bg-inherit z-10 group-hover:bg-muted/30">
+                        <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
                           <Button 
                             variant="ghost" 
                             size="sm"
                             onClick={() => openDetailModal(user)}
                             title="詳細表示"
-                            className="h-8 w-8 p-0"
+                            className="h-8 w-8 p-0 hover:bg-muted"
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
@@ -418,7 +531,7 @@ export default function UsersPage() {
                             size="sm"
                             onClick={() => openEditModal(user)}
                             title="編集"
-                            className="h-8 w-8 p-0"
+                            className="h-8 w-8 p-0 hover:bg-muted"
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -427,7 +540,7 @@ export default function UsersPage() {
                             size="sm"
                             onClick={() => handleDeleteUser(user.id)}
                             title="削除"
-                            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                            className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -452,10 +565,10 @@ export default function UsersPage() {
       {showDetailModal && selectedUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-background rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto m-4">
-            <div className="flex items-center justify-between p-6 border-b">
+            <div className="flex items-center justify-between p-6 border-b sticky top-0 bg-background z-10">
               <h2 className="text-2xl font-bold">{selectedUser.name} - 詳細情報</h2>
               <Button variant="ghost" size="icon" onClick={() => setShowDetailModal(false)}>
-                ✕
+                <X className="h-5 w-5" />
               </Button>
             </div>
             <div className="p-6 space-y-6">

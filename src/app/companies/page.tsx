@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Building2, Plus, Search, Edit, Trash2, Eye, Loader2, Users as UsersIcon, UserPlus } from 'lucide-react'
+import { Building2, Plus, Search, Edit, Trash2, Eye, Loader2, Users as UsersIcon, UserPlus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Company } from '@/types'
@@ -317,7 +317,7 @@ export default function CompaniesPage() {
             <div className="flex items-center justify-between p-6 border-b">
               <h2 className="text-2xl font-bold">{selectedCompany.name} - 詳細情報</h2>
               <Button variant="ghost" size="icon" onClick={() => setShowDetailModal(false)}>
-                ✕
+                <X className="h-5 w-5" />
               </Button>
             </div>
             <div className="p-6 space-y-4">
@@ -396,7 +396,7 @@ export default function CompaniesPage() {
             <div className="flex items-center justify-between p-6 border-b">
               <h2 className="text-2xl font-bold">{selectedCompany.name} - 所属ユーザー一覧</h2>
               <Button variant="ghost" size="icon" onClick={() => setShowUsersModal(false)}>
-                ✕
+                <X className="h-5 w-5" />
               </Button>
             </div>
             <div className="p-6">
@@ -479,7 +479,6 @@ export default function CompaniesPage() {
 }
 
 // 簡易的な企業モーダルコンポーネント
-// 簡易的な企業モーダルコンポーネント
 function CompanyModal({ 
   isOpen, 
   onClose, 
@@ -513,7 +512,9 @@ function CompanyModal({
       <div className="bg-background rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto m-4">
         <div className="flex items-center justify-between p-6 border-b">
           <h2 className="text-2xl font-bold">{company ? '企業編集' : '新規企業追加'}</h2>
-          <Button variant="ghost" size="icon" onClick={onClose}>✕</Button>
+          <Button variant="ghost" size="icon" onClick={onClose}>
+            <X className="h-5 w-5" />
+          </Button>
         </div>
         <div className="p-6 space-y-4">
           <div>
