@@ -27,6 +27,8 @@ export interface User {
   planTier?: 'ume' | 'take' | 'matsu' // 梅・竹・松プラン
   // AI初期設定
   aiInitialSettings?: AIInitialSettings
+  // Signal.ツール連携
+  signalToolAccessUrl?: string // Signal.ツールへのアクセスURL（ユーザー作成時に生成）
 }
 
 export interface AdminLayoutProps {

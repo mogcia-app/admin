@@ -66,7 +66,11 @@ export const userService = {
       
       const uid = userCredential.user.uid
       
-      // 2. Firestoreにユーザー詳細情報を保存（パスワードは除く）
+      // 2. Signal.ツールへのアクセスURLを生成
+      const signalToolBaseUrl = process.env.NEXT_PUBLIC_SIGNAL_TOOL_BASE_URL || 'https://signaltool.app'
+      const signalToolAccessUrl = `${signalToolBaseUrl}/auth/callback?userId=${uid}`
+      
+      // 3. Firestoreにユーザー詳細情報を保存（パスワードは除く）
       const { password, ...userDataWithoutPassword } = userData
       const userRef = doc(db, 'users', uid)
       
@@ -91,6 +95,7 @@ export const userService = {
         status: userData.status || 'active',
         contractStartDate: userData.contractStartDate || new Date().toISOString(),
         contractEndDate: userData.contractEndDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        signalToolAccessUrl, // Signal.ツールへのアクセスURL
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       })

@@ -581,6 +581,29 @@ export default function UsersPage() {
                     <p><span className="font-medium">利用形態:</span> {getUsageTypeLabel(selectedUser.usageType)}</p>
                     <p><span className="font-medium">契約タイプ:</span> {getContractTypeLabel(selectedUser.contractType)}</p>
                     <p><span className="font-medium">ステータス:</span> {getStatusLabel(selectedUser.status)}</p>
+                    {selectedUser.signalToolAccessUrl && (
+                      <div className="mt-4 p-3 bg-muted rounded-md">
+                        <p className="font-medium mb-2">Signal.ツールアクセスURL:</p>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={selectedUser.signalToolAccessUrl}
+                            readOnly
+                            className="flex-1 px-2 py-1 text-xs bg-background border border-border rounded"
+                          />
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              navigator.clipboard.writeText(selectedUser.signalToolAccessUrl || '')
+                              alert('URLをコピーしました')
+                            }}
+                          >
+                            コピー
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div>
