@@ -207,9 +207,9 @@ export function ChatInterface({
                               <span className="bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full">
                                 📄 {msg.metadata.page === 'users' ? 'ユーザー管理' : 
                                      msg.metadata.page === 'prompts' ? 'プロンプト管理' :
-                                    msg.metadata.page === 'notifications' ? 'お知らせ管理' :
-                                    msg.metadata.page === 'guides' ? 'ガイド管理' :
-                                    msg.metadata.page === 'access_control' ? 'アクセス制御' :
+                                     msg.metadata.page === 'notifications' ? 'お知らせ管理' :
+                                     msg.metadata.page === 'guides' ? 'ガイド管理' :
+                                     msg.metadata.page === 'access_control' ? 'アクセス制御' :
                                     msg.metadata.page}
                               </span>
                             )}

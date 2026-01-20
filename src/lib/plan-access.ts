@@ -5,7 +5,7 @@ export type PlanTier = 'ume' | 'take' | 'matsu'
 // プラン階層の定義
 export const PLAN_CONFIG = {
   ume: {
-    name: '梅プラン',
+    name: 'ライトプラン',
     monthlyFee: 15000,
     features: {
       canAccessLab: true,
@@ -18,7 +18,7 @@ export const PLAN_CONFIG = {
     },
   },
   take: {
-    name: '竹プラン',
+    name: 'スタンダードプラン',
     monthlyFee: 30000,
     features: {
       canAccessLab: true,
@@ -31,7 +31,7 @@ export const PLAN_CONFIG = {
     },
   },
   matsu: {
-    name: '松プラン',
+    name: 'プロプラン',
     monthlyFee: 60000,
     features: {
       canAccessLab: true,
@@ -108,5 +108,30 @@ export function getPlanList(): Array<{ value: PlanTier; label: string; price: nu
     { value: 'matsu', label: PLAN_CONFIG.matsu.name, price: PLAN_CONFIG.matsu.monthlyFee },
   ]
 }
+
+/**
+ * planTierをbillingInfo.planに変換
+ */
+export function planTierToBillingPlan(tier: PlanTier): 'light' | 'standard' | 'professional' {
+  const mapping = {
+    'ume': 'light' as const,
+    'take': 'standard' as const,
+    'matsu': 'professional' as const,
+  }
+  return mapping[tier]
+}
+
+/**
+ * billingInfo.planをplanTierに変換
+ */
+export function billingPlanToPlanTier(plan: 'light' | 'standard' | 'professional'): PlanTier {
+  const mapping = {
+    'light': 'ume' as const,
+    'standard': 'take' as const,
+    'professional': 'matsu' as const,
+  }
+  return mapping[plan]
+}
+
 
 

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { User, SNSAISettings, BusinessInfo, BillingInfo, Company, AIInitialSettings } from '@/types'
 import { useCompanies } from '@/hooks/useCompanies'
-import { getPlanList, getPlanName, getUserPlanTier } from '@/lib/plan-access'
+import { getPlanList, getPlanName, getUserPlanTier, planTierToBillingPlan } from '@/lib/plan-access'
 
 interface UserModalProps {
   isOpen: boolean
@@ -105,8 +105,26 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
   // ユーザー編集時の初期化
   useEffect(() => {
     if (user) {
+      // planTierからbillingInfo.planを自動設定（既存ユーザーの場合）
+      const planTier = user.planTier || 'ume'
+      const billingPlan = planTierToBillingPlan(planTier)
+      const billingInfo = user.billingInfo || {
+        plan: billingPlan,
+        monthlyFee: planTier === 'ume' ? 15000 : planTier === 'take' ? 30000 : 60000,
+        currency: 'JPY' as const,
+        paymentMethod: 'credit_card' as const,
+        nextBillingDate: '',
+        paymentStatus: 'paid' as const
+      }
+      
+      // billingInfo.planが設定されていない場合はplanTierから設定
+      if (!billingInfo.plan || (billingInfo.plan !== 'light' && billingInfo.plan !== 'standard' && billingInfo.plan !== 'professional')) {
+        billingInfo.plan = billingPlan
+      }
+      
       setFormData({
         ...user,
+        billingInfo,
         contractStartDate: user.contractStartDate.split('T')[0] + 'T00:00:00Z',
         contractEndDate: user.contractEndDate.split('T')[0] + 'T00:00:00Z'
       })
@@ -149,15 +167,15 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
         contractStartDate: now.toISOString(),
         contractEndDate: endDate.toISOString(),
         billingInfo: {
-          plan: 'trial',
-          monthlyFee: 15000, // デフォルトは梅プラン
+          plan: 'light', // デフォルトはライトプラン
+          monthlyFee: 15000, // デフォルトはライトプラン
           currency: 'JPY',
           paymentMethod: 'credit_card',
           nextBillingDate: endDate.toISOString(),
           paymentStatus: 'paid',
           requiresStripeSetup: true
         },
-        planTier: 'ume', // デフォルトは梅プラン
+        planTier: 'ume', // デフォルトはライトプラン（後方互換性のためumeを保持）
         aiInitialSettings: {
           defaultTone: 'professional',
           defaultLanguage: 'ja',
@@ -513,11 +531,13 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
                   value={formData.planTier || 'ume'}
                   onChange={(e) => {
                     const selectedTier = e.target.value as 'ume' | 'take' | 'matsu'
+                    const billingPlan = planTierToBillingPlan(selectedTier)
                     setFormData({ 
                       ...formData, 
                       planTier: selectedTier,
                       billingInfo: {
                         ...formData.billingInfo!,
+                        plan: billingPlan,
                         monthlyFee: selectedTier === 'ume' ? 15000 : selectedTier === 'take' ? 30000 : 60000
                       }
                     })

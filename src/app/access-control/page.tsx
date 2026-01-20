@@ -77,7 +77,7 @@ export default function AccessControlPage() {
         }
       } else {
         // その他のエラーは表示
-        setToolMaintenanceError('ツール側メンテナンス状態の取得に失敗しました')
+      setToolMaintenanceError('ツール側メンテナンス状態の取得に失敗しました')
       }
     } finally {
       setToolMaintenanceLoading(false)
@@ -113,7 +113,7 @@ export default function AccessControlPage() {
         alert('ツール側メンテナンス機能はまだ実装されていません。\n\nCloud Functionsの実装とCORS設定が必要です。\n\n実装予定の場合は、Functions側でCORSヘッダーを設定してください。')
         setToolMaintenanceError('APIエンドポイントが実装されていないか、CORS設定が必要です')
       } else {
-        setToolMaintenanceError('ツール側メンテナンスモードの設定に失敗しました')
+      setToolMaintenanceError('ツール側メンテナンスモードの設定に失敗しました')
       }
     } finally {
       setToolMaintenanceLoading(false)

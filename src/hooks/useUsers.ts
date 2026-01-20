@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react'
 import { User, UserStats } from '@/types'
 import { userService } from '@/lib/firebase-admin'
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore'
+import { db } from '@/lib/firebase'
 
 export function useUsers() {
   const [users, setUsers] = useState<User[]>([])
@@ -10,22 +12,36 @@ export function useUsers() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        setLoading(true)
-        const userData = await userService.getUsers()
-        setUsers(userData)
-        setError(null)
-      } catch (err) {
+    // リアルタイム監視でFirestoreの変更を検知
+    const usersRef = collection(db, 'users')
+    const q = query(usersRef, orderBy('createdAt', 'desc'))
+    
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        try {
+          const userData = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          })) as User[]
+          setUsers(userData)
+          setError(null)
+          setLoading(false)
+        } catch (err) {
+          console.error('Error processing users data:', err)
+          setError('ユーザーデータの処理に失敗しました')
+          setLoading(false)
+        }
+      },
+      (err) => {
         console.error('Error fetching users:', err)
         setError('ユーザーデータの取得に失敗しました。Firebase接続を確認してください。')
         setUsers([])
-      } finally {
         setLoading(false)
       }
-    }
+    )
 
-    fetchUsers()
+    return () => unsubscribe()
   }, [])
 
   const addUser = async (userData: Omit<User, 'id' | 'createdAt' | 'updatedAt'>) => {

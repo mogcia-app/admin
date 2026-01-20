@@ -29,6 +29,10 @@ export interface User {
   aiInitialSettings?: AIInitialSettings
   // Signal.ツール連携
   signalToolAccessUrl?: string // Signal.ツールへのアクセスURL（ユーザー作成時に生成）
+  // 支払い確認・アクセス制御（会員サイト側の登録フロー用）
+  initialPaymentConfirmed?: boolean // 初期費用確認済み
+  firstMonthPaymentConfirmed?: boolean // 初月分確認済み
+  accessGranted?: boolean // 会員サイトアクセス許可（支払い確認後に管理者が許可）
 }
 
 export interface AdminLayoutProps {
@@ -165,7 +169,7 @@ export interface BusinessInfo {
 }
 
 export interface BillingInfo {
-  plan: 'trial' | 'basic' | 'professional' | 'enterprise'
+  plan: 'trial' | 'basic' | 'light' | 'standard' | 'professional' | 'enterprise' // light/standard/professional を追加（会員サイト側との整合性）
   monthlyFee: number
   currency: 'JPY' | 'USD'
   paymentMethod: 'credit_card' | 'bank_transfer' | 'invoice'

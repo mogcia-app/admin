@@ -3,6 +3,7 @@ import { collection, getDocs, getDoc, addDoc, updateDoc, deleteDoc, doc, query, 
 import { createUserWithEmailAndPassword, deleteUser as deleteAuthUser } from 'firebase/auth'
 import { db, auth } from './firebase'
 import { User } from '@/types'
+import { planTierToBillingPlan } from './plan-access'
 
 // User management functions
 export const userService = {

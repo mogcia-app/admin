@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Users, Plus, Search, Edit, Trash2, Eye, Loader2, Calendar, Building, ChevronDown, ChevronUp, Building2, X, Filter } from 'lucide-react'
+import { Users, Plus, Search, Edit, Trash2, Eye, Loader2, Calendar, Building, ChevronDown, ChevronUp, Building2, X, Filter, CheckCircle, XCircle, Lock, Unlock, Grid, List } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { UserModal } from '@/components/users/user-modal'
@@ -42,6 +42,7 @@ export default function UsersPage() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState(false)
+  const [viewMode, setViewMode] = useState<'table' | 'grid'>('grid') // デフォルトをグリッド表示に
 
   // 検索とフィルタリング
   useEffect(() => {
@@ -236,10 +237,13 @@ export default function UsersPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={() => setShowCreateModal(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            新規利用者追加
-          </Button>
+          {/* 環境変数で新規利用者追加ボタンを制御（会員サイト側で登録するため非推奨） */}
+          {process.env.NEXT_PUBLIC_ENABLE_MANUAL_USER_CREATION === 'true' && (
+            <Button onClick={() => setShowCreateModal(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              新規利用者追加（緊急時のみ）
+            </Button>
+          )}
         </div>
       </div>
 
@@ -345,9 +349,9 @@ export default function UsersPage() {
                 className="px-3 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
               >
                 <option value="all">すべてのプラン</option>
-                <option value="ume">梅プラン</option>
-                <option value="take">竹プラン</option>
-                <option value="matsu">松プラン</option>
+                <option value="ume">ライトプラン</option>
+                <option value="take">スタンダードプラン</option>
+                <option value="matsu">プロプラン</option>
               </select>
               {(selectedStatus !== 'all' || selectedContractType !== 'all' || selectedPlanTier !== 'all' || searchQuery) && (
                 <Button
@@ -370,7 +374,7 @@ export default function UsersPage() {
         </CardContent>
       </Card>
 
-      {/* 利用者一覧 - テーブル形式 */}
+      {/* 利用者一覧 */}
       <div>
         <div className="mb-4 flex items-center justify-between">
           <div>
@@ -379,11 +383,166 @@ export default function UsersPage() {
               {filteredUsers.length} 人の利用者が見つかりました
             </p>
           </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant={viewMode === 'grid' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setViewMode('grid')}
+              className="flex items-center gap-2"
+            >
+              <Grid className="h-4 w-4" />
+              カード
+            </Button>
+            <Button
+              variant={viewMode === 'table' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setViewMode('table')}
+              className="flex items-center gap-2"
+            >
+              <List className="h-4 w-4" />
+              テーブル
+            </Button>
+          </div>
         </div>
-        <Card>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto max-h-[calc(100vh-420px)]">
-              <table className="w-full border-collapse">
+
+        {viewMode === 'grid' ? (
+          /* カード表示 */
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredUsers.map((user) => (
+              <Card 
+                key={user.id} 
+                className="cursor-pointer hover:shadow-lg transition-shadow"
+                onClick={() => openDetailModal(user)}
+              >
+                <CardContent className="p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-gradient-to-br from-primary to-primary/80 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
+                        <span className="text-lg font-semibold text-primary-foreground">
+                          {user.name.charAt(0)}
+                        </span>
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-base">{user.name}</h3>
+                        <p className="text-xs text-muted-foreground">{user.email}</p>
+                      </div>
+                    </div>
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(user.status)}`}>
+                      {getStatusLabel(user.status)}
+                    </span>
+                  </div>
+
+                  <div className="space-y-3">
+                    {/* プラン階層 */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
+                        user.planTier === 'ume' ? 'bg-pink-100 text-pink-700 border border-pink-200' :
+                        user.planTier === 'take' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' :
+                        user.planTier === 'matsu' ? 'bg-purple-100 text-purple-700 border border-purple-200' :
+                        'bg-gray-100 text-gray-700 border border-gray-200'
+                      }`}>
+                        {getPlanName(getUserPlanTier(user))}
+                      </span>
+                      {!user.accessGranted && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
+                          🔒 アクセス未許可
+                        </span>
+                      )}
+                    </div>
+
+                    {/* 契約情報 */}
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Calendar className="h-4 w-4" />
+                      <span>{getContractTypeLabel(user.contractType)}</span>
+                    </div>
+
+                    {/* 所属企業 */}
+                    {user.companyId && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Building2 className="h-4 w-4" />
+                        <span className="truncate">
+                          {companies.find(c => c.id === user.companyId)?.name || '不明な企業'}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* 業界 */}
+                    {user.businessInfo?.industry && (
+                      <div className="text-sm text-muted-foreground">
+                        業界: {user.businessInfo.industry}
+                      </div>
+                    )}
+
+                    {/* 契約SNS */}
+                    {user.contractSNS.length > 0 && (
+                      <div className="flex items-center gap-2">
+                        {user.contractSNS.slice(0, 3).map((sns) => (
+                          <span
+                            key={sns}
+                            className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-muted text-lg"
+                            title={snsLabels[sns]}
+                          >
+                            {snsIcons[sns]}
+                          </span>
+                        ))}
+                        {user.contractSNS.length > 3 && (
+                          <span className="text-xs text-muted-foreground">
+                            +{user.contractSNS.length - 3}
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* 契約終了日 */}
+                    <div className="text-xs text-muted-foreground pt-2 border-t">
+                      {new Date(user.contractEndDate).toLocaleDateString('ja-JP', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
+                      })}
+                      {new Date(user.contractEndDate) < new Date() && (
+                        <span className="ml-2 text-red-600 font-semibold">期限切れ</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* アクションボタン */}
+                  <div className="flex items-center justify-end gap-2 mt-4 pt-4 border-t" onClick={(e) => e.stopPropagation()}>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => openDetailModal(user)}
+                      className="h-8"
+                    >
+                      <Eye className="h-4 w-4 mr-1" />
+                      詳細
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => openEditModal(user)}
+                      className="h-8"
+                    >
+                      <Edit className="h-4 w-4 mr-1" />
+                      編集
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+            {filteredUsers.length === 0 && (
+              <div className="col-span-full text-center py-12">
+                <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p className="text-muted-foreground">該当する利用者が見つかりませんでした。</p>
+              </div>
+            )}
+          </div>
+        ) : (
+          /* テーブル表示 */
+          <Card>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto max-h-[calc(100vh-420px)]">
+                <table className="w-full border-collapse">
                 <thead className="sticky top-0 z-20 bg-background">
                   <tr className="border-b-2 border-border bg-muted/30">
                     <th className="px-5 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider sticky left-0 bg-muted/30 z-20 min-w-[180px] backdrop-blur-sm">
@@ -455,14 +614,21 @@ export default function UsersPage() {
                         </span>
                       </td>
                       <td className="px-5 py-4">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap shadow-sm ${
-                          user.planTier === 'ume' ? 'bg-pink-100 text-pink-700 border border-pink-200' :
-                          user.planTier === 'take' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' :
-                          user.planTier === 'matsu' ? 'bg-purple-100 text-purple-700 border border-purple-200' :
-                          'bg-gray-100 text-gray-700 border border-gray-200'
-                        }`}>
-                          {getPlanName(getUserPlanTier(user))}
-                        </span>
+                        <div className="flex flex-col gap-1">
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap shadow-sm ${
+                            user.planTier === 'ume' ? 'bg-pink-100 text-pink-700 border border-pink-200' :
+                            user.planTier === 'take' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' :
+                            user.planTier === 'matsu' ? 'bg-purple-100 text-purple-700 border border-purple-200' :
+                            'bg-gray-100 text-gray-700 border border-gray-200'
+                          }`}>
+                            {getPlanName(getUserPlanTier(user))}
+                          </span>
+                          {!user.accessGranted && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
+                              アクセス未許可
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-5 py-4">
                         <span className="inline-flex items-center px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-200 text-xs rounded-full font-semibold whitespace-nowrap shadow-sm">
@@ -559,6 +725,7 @@ export default function UsersPage() {
             </div>
           </CardContent>
         </Card>
+        )}
       </div>
 
       {/* 詳細モーダル（簡易版） */}
@@ -618,6 +785,31 @@ export default function UsersPage() {
                       </>
                     )}
                   </div>
+                  
+                  {/* 支払い確認・アクセス許可ステータス */}
+                  <div className="mt-4 p-3 bg-muted rounded-md space-y-2">
+                    <h4 className="font-medium text-sm mb-2">支払い確認状況</h4>
+                    <div className="space-y-1 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span>初期費用:</span>
+                        <span className={`font-semibold ${selectedUser.initialPaymentConfirmed ? 'text-green-600' : 'text-red-600'}`}>
+                          {selectedUser.initialPaymentConfirmed ? '✓ 確認済み' : '✗ 未確認'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>初月分:</span>
+                        <span className={`font-semibold ${selectedUser.firstMonthPaymentConfirmed ? 'text-green-600' : 'text-red-600'}`}>
+                          {selectedUser.firstMonthPaymentConfirmed ? '✓ 確認済み' : '✗ 未確認'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between pt-2 border-t">
+                        <span>会員サイトアクセス:</span>
+                        <span className={`font-semibold ${selectedUser.accessGranted ? 'text-green-600' : 'text-gray-600'}`}>
+                          {selectedUser.accessGranted ? '✓ 許可済み' : '✗ 未許可'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
               
@@ -653,6 +845,75 @@ export default function UsersPage() {
                       </div>
                     )
                   })}
+                </div>
+              </div>
+
+              {/* 支払い確認・アクセス許可アクション */}
+              <div className="border-t pt-4">
+                <h3 className="font-medium mb-3">支払い確認・アクセス管理</h3>
+                <div className="flex gap-2 flex-wrap mb-4">
+                  <Button
+                    onClick={async () => {
+                      if (confirm('初期費用の支払いを確認済みにしますか？')) {
+                        try {
+                          await userService.updateUser(selectedUser.id, {
+                            initialPaymentConfirmed: true
+                          })
+                          setSelectedUser({ ...selectedUser, initialPaymentConfirmed: true })
+                          alert('初期費用を確認済みにしました')
+                        } catch (err) {
+                          alert('更新に失敗しました: ' + (err instanceof Error ? err.message : '不明なエラー'))
+                        }
+                      }
+                    }}
+                    variant={selectedUser.initialPaymentConfirmed ? "outline" : "default"}
+                    className={selectedUser.initialPaymentConfirmed ? "" : "bg-blue-600 hover:bg-blue-700"}
+                  >
+                    {selectedUser.initialPaymentConfirmed ? '✓ 初期費用確認済み' : '初期費用を確認'}
+                  </Button>
+                  <Button
+                    onClick={async () => {
+                      if (confirm('初月分の支払いを確認済みにしますか？')) {
+                        try {
+                          await userService.updateUser(selectedUser.id, {
+                            firstMonthPaymentConfirmed: true
+                          })
+                          setSelectedUser({ ...selectedUser, firstMonthPaymentConfirmed: true })
+                          alert('初月分を確認済みにしました')
+                        } catch (err) {
+                          alert('更新に失敗しました: ' + (err instanceof Error ? err.message : '不明なエラー'))
+                        }
+                      }
+                    }}
+                    variant={selectedUser.firstMonthPaymentConfirmed ? "outline" : "default"}
+                    className={selectedUser.firstMonthPaymentConfirmed ? "" : "bg-blue-600 hover:bg-blue-700"}
+                  >
+                    {selectedUser.firstMonthPaymentConfirmed ? '✓ 初月分確認済み' : '初月分を確認'}
+                  </Button>
+                  <Button
+                    onClick={async () => {
+                      if (!selectedUser.initialPaymentConfirmed || !selectedUser.firstMonthPaymentConfirmed) {
+                        alert('初期費用と初月分の両方を確認済みにしてから、アクセスを許可してください。')
+                        return
+                      }
+                      if (confirm('会員サイトへのアクセスを許可しますか？\n（支払い確認後に実行してください）')) {
+                        try {
+                          await userService.updateUser(selectedUser.id, {
+                            accessGranted: true
+                          })
+                          setSelectedUser({ ...selectedUser, accessGranted: true })
+                          alert('会員サイトへのアクセスを許可しました')
+                        } catch (err) {
+                          alert('更新に失敗しました: ' + (err instanceof Error ? err.message : '不明なエラー'))
+                        }
+                      }
+                    }}
+                    variant={selectedUser.accessGranted ? "outline" : "default"}
+                    className={selectedUser.accessGranted ? "" : "bg-green-600 hover:bg-green-700"}
+                    disabled={!selectedUser.initialPaymentConfirmed || !selectedUser.firstMonthPaymentConfirmed}
+                  >
+                    {selectedUser.accessGranted ? '✓ アクセス許可済み' : '会員サイトアクセスを許可'}
+                  </Button>
                 </div>
               </div>
 
