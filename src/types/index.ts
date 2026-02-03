@@ -13,6 +13,8 @@ export interface User {
   contractSNS: ('instagram' | 'x' | /* 'youtube' | */ 'tiktok')[]
   snsAISettings: SNSAISettings
   businessInfo: BusinessInfo
+  // 要件書に記載のフィールド（onboardingページ用）
+  goals?: string[] // 目標（複数選択可）- Userレベル
   status: 'active' | 'inactive' | 'suspended'
   lastLoginAt?: string
   contractStartDate: string
@@ -33,6 +35,8 @@ export interface User {
   initialPaymentConfirmed?: boolean // 初期費用確認済み
   firstMonthPaymentConfirmed?: boolean // 初月分確認済み
   accessGranted?: boolean // 会員サイトアクセス許可（支払い確認後に管理者が許可）
+  // サポートID（UUID v4）
+  supportId?: string // サポート効率化とセキュリティ向上のためのランダムID
 }
 
 export interface AdminLayoutProps {
@@ -143,6 +147,20 @@ export interface SNSAISetting {
   focusMetrics: string[]
   // その他の戦略メモ
   strategyNotes?: string
+  // 要件書に記載のInstagram AI設定フィールド（onboardingページ用）
+  manner?: string // マナー・ルール
+  cautions?: string // 注意事項・NGワード
+  goals?: string // 目標・目的
+  motivation?: string // モチベーション・想い
+  additionalInfo?: string // 追加情報・その他
+}
+
+// 商品・サービス情報
+export interface ProductOrService {
+  id: string
+  name: string
+  details: string
+  price?: string // 価格（税込）
 }
 
 export interface BusinessInfo {
@@ -151,6 +169,12 @@ export interface BusinessInfo {
   companySize: 'individual' | 'small' | 'medium' | 'large'
   businessType: 'b2b' | 'b2c' | 'both'
   description: string
+  
+  // 要件書に記載のフィールド（onboardingページ用）
+  targetMarket?: string[] // ターゲット市場
+  catchphrase?: string // キャッチコピー
+  initialFollowers?: number // 利用開始日時点のフォロワー数
+  productsOrServices?: ProductOrService[] // 商品・サービス情報（ユーザーが編集可能）
   
   // SNS活用の大目標（Why SNS?）
   snsMainGoals: string[] // 例: ['認知拡大で月間新規顧客100人', 'EC売上30%UP']

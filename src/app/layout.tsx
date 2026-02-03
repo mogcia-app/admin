@@ -15,8 +15,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Signal App - Admin Panel",
-  description: "Signal App管理者専用パネル - ユーザー管理、AI設定、KPI監視",
+  title: "Signal. Admin",
+  description: "Signal 管理者専用パネル - ユーザー管理、AI設定、KPI監視",
+  icons: {
+    icon: '/icon.png',
+    apple: '/icon.png',
+  },
 };
 
 export default function RootLayout({

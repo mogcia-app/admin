@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Users, Plus, Search, Edit, Trash2, Eye, Loader2, Calendar, Building, ChevronDown, ChevronUp, Building2, X, Filter, CheckCircle, XCircle, Lock, Unlock, Grid, List } from 'lucide-react'
+import { Users, Plus, Search, Edit, Trash2, Eye, Loader2, Calendar, Building, ChevronDown, ChevronUp, Building2, X, Filter, CheckCircle, XCircle, Lock, Unlock, Grid, List, Copy, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { UserModal } from '@/components/users/user-modal'
@@ -43,6 +43,7 @@ export default function UsersPage() {
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('grid') // デフォルトをグリッド表示に
+  const [copiedSupportId, setCopiedSupportId] = useState<string | null>(null)
 
   // 検索とフィルタリング
   useEffect(() => {
@@ -208,6 +209,30 @@ export default function UsersPage() {
     setShowEditModal(true)
   }
 
+  const copySupportId = async (supportId: string) => {
+    try {
+      await navigator.clipboard.writeText(supportId)
+      setCopiedSupportId(supportId)
+      setTimeout(() => setCopiedSupportId(null), 2000)
+    } catch (err) {
+      console.error('Failed to copy support ID:', err)
+      alert('コピーに失敗しました')
+    }
+  }
+
+  const assignSupportId = async (userId: string) => {
+    try {
+      const supportId = await userService.assignSupportId(userId)
+      if (supportId) {
+        alert(`サポートIDを付与しました: ${supportId}`)
+        // ユーザー一覧を更新
+        window.location.reload()
+      }
+    } catch (err) {
+      alert('サポートIDの付与に失敗しました: ' + (err instanceof Error ? err.message : '不明なエラー'))
+    }
+  }
+
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ja-JP', {
@@ -237,142 +262,31 @@ export default function UsersPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          {/* 環境変数で新規利用者追加ボタンを制御（会員サイト側で登録するため非推奨） */}
-          {process.env.NEXT_PUBLIC_ENABLE_MANUAL_USER_CREATION === 'true' && (
-            <Button onClick={() => setShowCreateModal(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              新規利用者追加（緊急時のみ）
-            </Button>
-          )}
+          <Button onClick={() => setShowCreateModal(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            新規利用者追加
+          </Button>
         </div>
       </div>
 
-      {/* 統計情報 */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">総利用者数</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalUsers}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">アクティブ</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.activeUsers}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">お試し契約</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.trialUsers}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">年間契約</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.annualUsers}</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* 検索・フィルター */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <input
-                  type="search"
-                  placeholder="名前、メール、業界で検索..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 pr-4 py-2 w-full bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring transition-colors"
-                />
-              </div>
-              {/* URLパラメータから企業IDを取得してモーダルを開く */}
-              {typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('companyId') && (
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    const companyId = new URLSearchParams(window.location.search).get('companyId')
-                    if (companyId) {
-                      setShowCreateModal(true)
-                      window.history.replaceState({}, '', '/users')
-                    }
-                  }}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  この企業のユーザーを追加
-                </Button>
-              )}
-            </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-2">
-                <Filter className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium text-muted-foreground">フィルター:</span>
-              </div>
-              <select
-                value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
-                className="px-3 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
-              >
-                <option value="all">すべてのステータス</option>
-                <option value="active">アクティブ</option>
-                <option value="inactive">非アクティブ</option>
-                <option value="suspended">停止中</option>
-              </select>
-              <select
-                value={selectedContractType}
-                onChange={(e) => setSelectedContractType(e.target.value)}
-                className="px-3 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
-              >
-                <option value="all">すべての契約</option>
-                <option value="annual">年間契約</option>
-                <option value="trial">お試し契約</option>
-              </select>
-              <select
-                value={selectedPlanTier}
-                onChange={(e) => setSelectedPlanTier(e.target.value)}
-                className="px-3 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
-              >
-                <option value="all">すべてのプラン</option>
-                <option value="ume">ライトプラン</option>
-                <option value="take">スタンダードプラン</option>
-                <option value="matsu">プロプラン</option>
-              </select>
-              {(selectedStatus !== 'all' || selectedContractType !== 'all' || selectedPlanTier !== 'all' || searchQuery) && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setSelectedStatus('all')
-                    setSelectedContractType('all')
-                    setSelectedPlanTier('all')
-                    setSearchQuery('')
-                  }}
-                  className="text-xs"
-                >
-                  <X className="h-3 w-3 mr-1" />
-                  リセット
-                </Button>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* URLパラメータから企業IDを取得してモーダルを開く */}
+      {typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('companyId') && (
+        <div className="mb-4">
+          <Button
+            variant="outline"
+            onClick={() => {
+              const companyId = new URLSearchParams(window.location.search).get('companyId')
+              if (companyId) {
+                setShowCreateModal(true)
+                window.history.replaceState({}, '', '/users')
+              }
+            }}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            この企業のユーザーを追加
+          </Button>
+        </div>
+      )}
 
       {/* 利用者一覧 */}
       <div>
@@ -493,6 +407,45 @@ export default function UsersPage() {
                       </div>
                     )}
 
+                    {/* サポートID */}
+                    <div className="text-xs pt-2 border-t">
+                      {user.supportId ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-muted-foreground">サポートID:</span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              copySupportId(user.supportId!)
+                            }}
+                            className="flex items-center gap-1 text-primary hover:underline font-mono text-xs"
+                            title="クリックでコピー"
+                          >
+                            {user.supportId.substring(0, 8)}...
+                            {copiedSupportId === user.supportId ? (
+                              <Check className="h-3 w-3 text-green-600" />
+                            ) : (
+                              <Copy className="h-3 w-3" />
+                            )}
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span className="text-muted-foreground">サポートID: 未付与</span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              assignSupportId(user.id)
+                            }}
+                            className="h-6 text-xs"
+                          >
+                            付与
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+
                     {/* 契約終了日 */}
                     <div className="text-xs text-muted-foreground pt-2 border-t">
                       {new Date(user.contractEndDate).toLocaleDateString('ja-JP', {
@@ -571,6 +524,9 @@ export default function UsersPage() {
                     </th>
                     <th className="px-5 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[130px]">
                       契約終了日
+                    </th>
+                    <th className="px-5 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-[200px]">
+                      サポートID
                     </th>
                     <th className="px-5 py-4 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider sticky right-0 bg-muted/30 z-20 min-w-[140px] backdrop-blur-sm">
                       操作
@@ -681,6 +637,40 @@ export default function UsersPage() {
                           )}
                         </div>
                       </td>
+                      <td className="px-5 py-4 text-sm">
+                        {user.supportId ? (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              copySupportId(user.supportId!)
+                            }}
+                            className="flex items-center gap-1 text-primary hover:underline font-mono text-xs"
+                            title="クリックでコピー"
+                          >
+                            {user.supportId.substring(0, 8)}...
+                            {copiedSupportId === user.supportId ? (
+                              <Check className="h-3 w-3 text-green-600" />
+                            ) : (
+                              <Copy className="h-3 w-3" />
+                            )}
+                          </button>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <span className="text-muted-foreground italic text-xs">未付与</span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                assignSupportId(user.id)
+                              }}
+                              className="h-6 text-xs"
+                            >
+                              付与
+                            </Button>
+                          </div>
+                        )}
+                      </td>
                       <td className="px-5 py-4 sticky right-0 bg-inherit z-10 group-hover:bg-muted/30">
                         <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
                           <Button 
@@ -748,6 +738,63 @@ export default function UsersPage() {
                     <p><span className="font-medium">利用形態:</span> {getUsageTypeLabel(selectedUser.usageType)}</p>
                     <p><span className="font-medium">契約タイプ:</span> {getContractTypeLabel(selectedUser.contractType)}</p>
                     <p><span className="font-medium">ステータス:</span> {getStatusLabel(selectedUser.status)}</p>
+                    <div className="mt-4 p-3 bg-muted rounded-md">
+                      <p className="font-medium mb-2">サポートID</p>
+                      {selectedUser.supportId ? (
+                        <div className="flex items-center gap-2">
+                          <code className="flex-1 px-2 py-1 text-xs bg-background border border-border rounded font-mono">
+                            {selectedUser.supportId}
+                          </code>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => copySupportId(selectedUser.supportId!)}
+                            className="h-8"
+                          >
+                            {copiedSupportId === selectedUser.supportId ? (
+                              <>
+                                <Check className="h-4 w-4 mr-1" />
+                                コピーしました
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="h-4 w-4 mr-1" />
+                                コピー
+                              </>
+                            )}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={async () => {
+                              if (confirm('サポートIDを再生成しますか？この操作は元に戻せません。')) {
+                                try {
+                                  const newSupportId = await userService.regenerateSupportId(selectedUser.id)
+                                  setSelectedUser({ ...selectedUser, supportId: newSupportId })
+                                  alert(`サポートIDを再生成しました: ${newSupportId}`)
+                                } catch (err) {
+                                  alert('再生成に失敗しました: ' + (err instanceof Error ? err.message : '不明なエラー'))
+                                }
+                              }
+                            }}
+                            className="h-8"
+                          >
+                            再生成
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span className="text-muted-foreground text-sm">未付与</span>
+                          <Button
+                            size="sm"
+                            onClick={() => assignSupportId(selectedUser.id)}
+                            className="h-8"
+                          >
+                            サポートIDを付与
+                          </Button>
+                        </div>
+                      )}
+                    </div>
                     {selectedUser.signalToolAccessUrl && (
                       <div className="mt-4 p-3 bg-muted rounded-md">
                         <p className="font-medium mb-2">Signal.ツールアクセスURL:</p>

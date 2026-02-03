@@ -4,6 +4,7 @@ import { createUserWithEmailAndPassword, deleteUser as deleteAuthUser } from 'fi
 import { db, auth } from './firebase'
 import { User } from '@/types'
 import { planTierToBillingPlan } from './plan-access'
+import { v4 as uuidv4 } from 'uuid'
 
 // User management functions
 export const userService = {
@@ -67,17 +68,21 @@ export const userService = {
       
       const uid = userCredential.user.uid
       
-      // 2. Signal.ツールへのアクセスURLを生成
+      // 2. サポートIDを生成（UUID v4）
+      const supportId = uuidv4()
+      
+      // 3. Signal.ツールへのアクセスURLを生成
       const signalToolBaseUrl = process.env.NEXT_PUBLIC_SIGNAL_TOOL_BASE_URL || 'https://signaltool.app'
       const signalToolAccessUrl = `${signalToolBaseUrl}/auth/callback?userId=${uid}`
       
-      // 3. Firestoreにユーザー詳細情報を保存（パスワードは除く）
+      // 4. Firestoreにユーザー詳細情報を保存（パスワードは除く）
       const { password, ...userDataWithoutPassword } = userData
       const userRef = doc(db, 'users', uid)
       
       await setDoc(userRef, {
         id: uid, // Firebase Auth UIDを使用
         ...userDataWithoutPassword,
+        supportId: supportId, // サポートIDを付与
         snsCount: userData.snsCount || 1,
         usageType: userData.usageType || 'solo',
         contractType: userData.contractType || 'trial',
@@ -208,6 +213,109 @@ export const userService = {
       })
     } catch (error) {
       console.error('Error reactivating contract:', error)
+      throw error
+    }
+  },
+
+  // Assign support ID to existing user (if not already assigned)
+  async assignSupportId(userId: string): Promise<string | null> {
+    try {
+      const userRef = doc(db, 'users', userId)
+      const userDoc = await getDoc(userRef)
+
+      if (!userDoc.exists()) {
+        throw new Error(`ユーザーが見つかりません: ${userId}`)
+      }
+
+      const userData = userDoc.data() as User
+      
+      // 既にサポートIDが付与されている場合はスキップ
+      if (userData?.supportId) {
+        console.log(`⚠️ 既にサポートIDが付与されています: ${userData.supportId}`)
+        return userData.supportId
+      }
+
+      // サポートIDを生成して付与
+      const supportId = uuidv4()
+      await updateDoc(userRef, {
+        supportId: supportId,
+        updatedAt: new Date().toISOString()
+      })
+
+      console.log(`✅ サポートIDを付与しました: ${userId} → ${supportId}`)
+      return supportId
+    } catch (error) {
+      console.error('Error assigning support ID:', error)
+      throw error
+    }
+  },
+
+  // Regenerate support ID (for security reasons)
+  async regenerateSupportId(userId: string): Promise<string> {
+    try {
+      const userRef = doc(db, 'users', userId)
+      const userDoc = await getDoc(userRef)
+
+      if (!userDoc.exists()) {
+        throw new Error(`ユーザーが見つかりません: ${userId}`)
+      }
+
+      // サポートIDを再生成
+      const supportId = uuidv4()
+      await updateDoc(userRef, {
+        supportId: supportId,
+        updatedAt: new Date().toISOString()
+      })
+
+      console.log(`✅ サポートIDを再生成しました: ${userId} → ${supportId}`)
+      return supportId
+    } catch (error) {
+      console.error('Error regenerating support ID:', error)
+      throw error
+    }
+  },
+
+  // Assign support ID to all users (batch processing)
+  async assignSupportIdToAllUsers(): Promise<{ success: number; skip: number; error: number }> {
+    try {
+      const usersSnapshot = await getDocs(collection(db, 'users'))
+      let successCount = 0
+      let skipCount = 0
+      let errorCount = 0
+
+      for (const userDoc of usersSnapshot.docs) {
+        try {
+          const userData = userDoc.data() as User
+          
+          if (userData.supportId) {
+            skipCount++
+            continue
+          }
+
+          const supportId = uuidv4()
+          await updateDoc(doc(db, 'users', userDoc.id), {
+            supportId: supportId,
+            updatedAt: new Date().toISOString()
+          })
+          
+          successCount++
+          console.log(`✅ ${userData.email}: ${supportId}`)
+        } catch (error) {
+          errorCount++
+          console.error(`❌ ${userDoc.id}: ${error}`)
+        }
+      }
+
+      console.log(`
+📊 サポートID付与完了
+  - 成功: ${successCount}件
+  - スキップ: ${skipCount}件
+  - エラー: ${errorCount}件
+      `)
+
+      return { success: successCount, skip: skipCount, error: errorCount }
+    } catch (error) {
+      console.error('Error assigning support ID to all users:', error)
       throw error
     }
   }

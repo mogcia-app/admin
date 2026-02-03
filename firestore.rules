@@ -31,9 +31,9 @@ service cloud.firestore {
     // ユーザーコレクション - 契約期間チェック付き
     match /users/{userId} {
       // 自分自身のデータは読み取り可能
-      allow read: if isAuthenticated() && request.auth.uid == userId;
-      // 管理者は読み書き可能
-      allow read, write: if isAuthenticated() && isAdminEmail();
+      allow get: if isAuthenticated() && request.auth.uid == userId;
+      // 管理者は全ユーザーの読み書き可能（getとlistの両方）
+      allow get, list, write: if isAuthenticated() && isAdminEmail();
       // 契約期間内のユーザーのみ書き込み可能
       allow write: if isAuthenticated() && 
                         request.auth.uid == userId && 
@@ -41,6 +41,12 @@ service cloud.firestore {
       // 新規ユーザー作成時（登録時）
       allow create: if isAuthenticated() && 
                          request.auth.uid == userId;
+    }
+    
+    // 企業コレクション - 管理者専用
+    match /companies/{companyId} {
+      // 管理者のみ読み書き可能（getとlistの両方）
+      allow get, list, write: if isAuthenticated() && isAdminEmail();
     }
     
     // エラーログ、KPI、プロンプト、通知など、管理者専用コレクション

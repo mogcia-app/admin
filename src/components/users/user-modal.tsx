@@ -2,10 +2,10 @@
 
 import React, { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { X, Save, Plus, Trash2 } from 'lucide-react'
+import { X, Save, Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { User, SNSAISettings, BusinessInfo, BillingInfo, Company, AIInitialSettings } from '@/types'
+import { User, SNSAISettings, BusinessInfo, BillingInfo, Company, AIInitialSettings, ProductOrService } from '@/types'
 import { useCompanies } from '@/hooks/useCompanies'
 import { getPlanList, getPlanName, getUserPlanTier, planTierToBillingPlan } from '@/lib/plan-access'
 
@@ -53,7 +53,7 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
     email: '',
     password: '', // 新規作成時のパスワード
     usageType: 'solo',
-    contractType: 'trial',
+    contractType: 'annual',
     contractSNS: [],
     snsCount: 1, // デフォルトは1SNS
     snsAISettings: {},
@@ -63,6 +63,10 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
       companySize: 'individual',
       businessType: 'b2c',
       description: '',
+      targetMarket: [],
+      catchphrase: '',
+      initialFollowers: 0,
+      productsOrServices: [],
       snsMainGoals: [],
       brandMission: '',
       targetCustomer: '',
@@ -71,6 +75,7 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
       kpiTargets: [],
       challenges: []
     },
+    goals: [],
     status: 'active',
     contractStartDate: new Date().toISOString().split('T')[0] + 'T00:00:00Z',
     contractEndDate: '',
@@ -101,6 +106,25 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
   const [newKPITarget, setNewKPITarget] = useState('')
   const [newChallenge, setNewChallenge] = useState('')
   const [newFocusMetric, setNewFocusMetric] = useState('')
+  const [newTargetMarket, setNewTargetMarket] = useState('')
+  const [newGoal, setNewGoal] = useState('')
+  const [editingProductIndex, setEditingProductIndex] = useState<number | null>(null)
+  const [editingProduct, setEditingProduct] = useState<Partial<ProductOrService>>({ name: '', details: '', price: '' })
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    sns: false,
+    goals: false,
+    business: false,
+    aiSettings: false,
+    billing: false,
+    notes: false
+  })
+
+  const toggleSection = (section: string) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }))
+  }
 
   // ユーザー編集時の初期化
   useEffect(() => {
@@ -136,18 +160,14 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
       // 新規作成時のデフォルト値
       const now = new Date()
       const endDate = new Date(now)
-      if (formData.contractType === 'trial') {
-        endDate.setMonth(endDate.getMonth() + 1)
-      } else {
-        endDate.setFullYear(endDate.getFullYear() + 1)
-      }
+      endDate.setFullYear(endDate.getFullYear() + 1) // 年間契約のデフォルト
 
       setFormData({
         name: '',
         email: '',
         password: '', // 新規作成時のパスワード
         usageType: 'solo',
-        contractType: 'trial',
+        contractType: 'annual',
         contractSNS: [],
         snsAISettings: {},
         businessInfo: {
@@ -155,6 +175,10 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
           companySize: 'individual',
           businessType: 'b2c',
           description: '',
+          targetMarket: [],
+          catchphrase: '',
+          initialFollowers: 0,
+          productsOrServices: [],
           snsMainGoals: [],
           brandMission: '',
           targetCustomer: '',
@@ -163,6 +187,7 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
           kpiTargets: [],
           challenges: []
         },
+        goals: [],
         status: 'active',
         contractStartDate: now.toISOString(),
         contractEndDate: endDate.toISOString(),
@@ -254,7 +279,7 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
     const updatedSettings = { ...formData.snsAISettings }
     
     if (checked) {
-      updatedSettings[sns as keyof SNSAISettings] = {
+      const baseSetting = {
         enabled: true,
         whyThisSNS: '',
         snsGoal: '',
@@ -264,6 +289,19 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
         tone: '',
         focusMetrics: [],
         strategyNotes: ''
+      }
+      // Instagram専用フィールド
+      if (sns === 'instagram') {
+        updatedSettings[sns as keyof SNSAISettings] = {
+          ...baseSetting,
+          manner: '',
+          cautions: '',
+          goals: '',
+          motivation: '',
+          additionalInfo: ''
+        }
+      } else {
+        updatedSettings[sns as keyof SNSAISettings] = baseSetting
       }
     } else {
       delete updatedSettings[sns as keyof SNSAISettings]
@@ -392,6 +430,101 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
     })
   }
 
+  const handleAddTargetMarket = () => {
+    if (!newTargetMarket.trim()) return
+    setFormData({
+      ...formData,
+      businessInfo: {
+        ...formData.businessInfo!,
+        targetMarket: [...(formData.businessInfo?.targetMarket || []), newTargetMarket.trim()]
+      }
+    })
+    setNewTargetMarket('')
+  }
+
+  const handleRemoveTargetMarket = (index: number) => {
+    setFormData({
+      ...formData,
+      businessInfo: {
+        ...formData.businessInfo!,
+        targetMarket: formData.businessInfo!.targetMarket?.filter((_, i) => i !== index) || []
+      }
+    })
+  }
+
+  const handleAddGoal = () => {
+    if (!newGoal.trim()) return
+    setFormData({
+      ...formData,
+      goals: [...(formData.goals || []), newGoal.trim()]
+    })
+    setNewGoal('')
+  }
+
+  const handleRemoveGoal = (index: number) => {
+    setFormData({
+      ...formData,
+      goals: formData.goals?.filter((_, i) => i !== index) || []
+    })
+  }
+
+  const handleAddProduct = () => {
+    if (!editingProduct.name?.trim()) return
+    const newProduct: ProductOrService = {
+      id: Date.now().toString(),
+      name: editingProduct.name.trim(),
+      details: editingProduct.details || '',
+      price: editingProduct.price
+    }
+    setFormData({
+      ...formData,
+      businessInfo: {
+        ...formData.businessInfo!,
+        productsOrServices: [...(formData.businessInfo?.productsOrServices || []), newProduct]
+      }
+    })
+    setEditingProduct({ name: '', details: '', price: '' })
+    setEditingProductIndex(null)
+  }
+
+  const handleEditProduct = (index: number) => {
+    const product = formData.businessInfo?.productsOrServices?.[index]
+    if (product) {
+      setEditingProduct(product)
+      setEditingProductIndex(index)
+    }
+  }
+
+  const handleUpdateProduct = () => {
+    if (editingProductIndex === null || !editingProduct.name?.trim()) return
+    const updatedProducts = [...(formData.businessInfo?.productsOrServices || [])]
+    updatedProducts[editingProductIndex] = {
+      id: updatedProducts[editingProductIndex].id,
+      name: editingProduct.name.trim(),
+      details: editingProduct.details || '',
+      price: editingProduct.price
+    }
+    setFormData({
+      ...formData,
+      businessInfo: {
+        ...formData.businessInfo!,
+        productsOrServices: updatedProducts
+      }
+    })
+    setEditingProduct({ name: '', details: '', price: '' })
+    setEditingProductIndex(null)
+  }
+
+  const handleRemoveProduct = (index: number) => {
+    setFormData({
+      ...formData,
+      businessInfo: {
+        ...formData.businessInfo!,
+        productsOrServices: formData.businessInfo!.productsOrServices?.filter((_, i) => i !== index) || []
+      }
+    })
+  }
+
   const handleSave = () => {
     if (!formData.name?.trim() || !formData.email?.trim()) {
       alert('名前とメールアドレスは必須項目です。')
@@ -426,43 +559,57 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
 
   return createPortal(
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-50 p-4">
-      <div className="bg-background rounded-lg shadow-lg w-full max-w-6xl max-h-[90vh] overflow-y-auto relative">
-        <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-2xl font-bold">
-            {user ? '利用者情報編集' : '新規利用者追加'}
-          </h2>
+      <div className="bg-background rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto relative">
+        <div className="flex items-center justify-between p-6 border-b sticky top-0 bg-background z-10">
+          <div>
+            <h2 className="text-2xl font-bold">
+              {user ? '利用者情報編集' : '新規利用者追加'}
+            </h2>
+            {!user && (
+              <p className="text-sm text-muted-foreground mt-1">
+                必須項目（名前、メール、パスワード、プラン階層）を入力して保存してください
+              </p>
+            )}
+          </div>
           <Button variant="ghost" size="icon" onClick={onClose}>
             <X className="h-5 w-5" />
           </Button>
         </div>
 
         <div className="p-6 space-y-6">
-          {/* 基本情報 */}
-          <Card>
+          {/* 必須情報 - 最初に表示 */}
+          <Card className="border-2 border-primary/20">
             <CardHeader>
-              <CardTitle>基本情報</CardTitle>
+              <CardTitle className="text-lg">必須情報</CardTitle>
+              <CardDescription>新規利用者追加に必要な基本情報を入力してください</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2">名前 *</label>
+                  <label className="block text-sm font-medium mb-2">
+                    名前 <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="text"
                     value={formData.name || ''}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
                     placeholder="利用者名を入力"
+                    required
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium mb-2">メールアドレス *</label>
+                  <label className="block text-sm font-medium mb-2">
+                    メールアドレス <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="email"
                     value={formData.email || ''}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
                     placeholder="email@example.com"
+                    required
                   />
                 </div>
               </div>
@@ -471,8 +618,8 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
               {!user && (
                 <div>
                   <label className="block text-sm font-medium mb-2">
-                    初期パスワード *
-                    <span className="text-xs text-muted-foreground ml-2">
+                    初期パスワード <span className="text-red-500">*</span>
+                    <span className="text-xs text-muted-foreground ml-2 font-normal">
                       （利用者がログインで使用するパスワード）
                     </span>
                   </label>
@@ -483,6 +630,7 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
                     className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
                     placeholder="8文字以上のパスワードを入力"
                     minLength={8}
+                    required
                   />
                   <p className="text-xs text-muted-foreground mt-1">
                     このパスワードで利用者側アプリにログインできます。利用者は後で変更可能です。
@@ -490,107 +638,34 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
                 </div>
               )}
 
-              {/* 企業選択（B2B向け） */}
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  所属企業（オプション）
-                  <span className="text-xs text-muted-foreground ml-2">
-                    企業向け販売の場合、ユーザーを企業に紐付けます
-                  </span>
-                </label>
-                <select
-                  value={formData.companyId || ''}
-                  onChange={(e) => setFormData({ ...formData, companyId: e.target.value || undefined })}
-                  className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  <option value="">企業を選択しない（個人利用者）</option>
-                  {companies
-                    .filter(company => company.status === 'active')
-                    .map((company) => (
-                      <option key={company.id} value={company.id}>
-                        {company.name} {company.industry ? `(${company.industry})` : ''}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* プラン階層選択（会員サイト向け） */}
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    プラン階層 <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={formData.planTier || 'ume'}
+                    onChange={(e) => {
+                      const selectedTier = e.target.value as 'ume' | 'take' | 'matsu'
+                      const billingPlan = planTierToBillingPlan(selectedTier)
+                      setFormData({ 
+                        ...formData, 
+                        planTier: selectedTier,
+                        billingInfo: {
+                          ...formData.billingInfo!,
+                          plan: billingPlan,
+                          monthlyFee: selectedTier === 'ume' ? 15000 : selectedTier === 'take' ? 30000 : 60000
+                        }
+                      })
+                    }}
+                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    {getPlanList().map((plan) => (
+                      <option key={plan.value} value={plan.value}>
+                        {plan.label} (¥{plan.price.toLocaleString()}/月)
                       </option>
                     ))}
-                </select>
-                {formData.companyId && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    選択中の企業: {companies.find(c => c.id === formData.companyId)?.name}
-                  </p>
-                )}
-              </div>
-
-              {/* プラン階層選択（会員サイト向け） */}
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  プラン階層 *
-                  <span className="text-xs text-muted-foreground ml-2">
-                    会員サイトでの機能アクセスを制御します
-                  </span>
-                </label>
-                <select
-                  value={formData.planTier || 'ume'}
-                  onChange={(e) => {
-                    const selectedTier = e.target.value as 'ume' | 'take' | 'matsu'
-                    const billingPlan = planTierToBillingPlan(selectedTier)
-                    setFormData({ 
-                      ...formData, 
-                      planTier: selectedTier,
-                      billingInfo: {
-                        ...formData.billingInfo!,
-                        plan: billingPlan,
-                        monthlyFee: selectedTier === 'ume' ? 15000 : selectedTier === 'take' ? 30000 : 60000
-                      }
-                    })
-                  }}
-                  className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  {getPlanList().map((plan) => (
-                    <option key={plan.value} value={plan.value}>
-                      {plan.label} (¥{plan.price.toLocaleString()}/月)
-                    </option>
-                  ))}
-                </select>
-                <p className="text-xs text-muted-foreground mt-1">
-                  現在選択: {getPlanName(formData.planTier || 'ume')}
-                </p>
-              </div>
-
-              <div className="grid grid-cols-4 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">利用形態</label>
-                  <select
-                    value={formData.usageType || 'solo'}
-                    onChange={(e) => setFormData({ ...formData, usageType: e.target.value as any })}
-                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-                  >
-                    <option value="solo">ソロ利用</option>
-                    <option value="team">チーム利用</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2">契約タイプ</label>
-                  <select
-                    value={formData.contractType || 'trial'}
-                    onChange={(e) => setFormData({ ...formData, contractType: e.target.value as any })}
-                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-                  >
-                    <option value="trial">お試し1ヶ月契約</option>
-                    <option value="annual">年間契約</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2">SNS契約数</label>
-                  <select
-                    value={formData.snsCount || 1}
-                    onChange={(e) => setFormData({ ...formData, snsCount: parseInt(e.target.value) })}
-                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-                  >
-                    <option value={1}>1SNS (60,000円)</option>
-                    <option value={2}>2SNS (80,000円)</option>
-                    <option value={3}>3SNS (100,000円)</option>
-                    {/* <option value={4}>4SNS (120,000円)</option> */} {/* 将来的に必要になる可能性あり */}
                   </select>
                 </div>
 
@@ -610,12 +685,55 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
             </CardContent>
           </Card>
 
-          {/* 契約SNS選択 */}
+          {/* オプション情報 - 折りたたみ可能にする */}
           <Card>
             <CardHeader>
-              <CardTitle>契約SNS</CardTitle>
-              <CardDescription>利用するSNSプラットフォームを選択してください（最大3つまで）</CardDescription>
+              <CardTitle className="text-lg">オプション情報</CardTitle>
+              <CardDescription>必要に応じて設定してください</CardDescription>
             </CardHeader>
+            <CardContent className="space-y-4">
+              {/* 企業選択（B2B向け） */}
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  所属企業（オプション）
+                </label>
+                <select
+                  value={formData.companyId || ''}
+                  onChange={(e) => setFormData({ ...formData, companyId: e.target.value || undefined })}
+                  className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="">企業を選択しない（個人利用者）</option>
+                  {companies
+                    .filter(company => company.status === 'active')
+                    .map((company) => (
+                      <option key={company.id} value={company.id}>
+                        {company.name} {company.industry ? `(${company.industry})` : ''}
+                      </option>
+                    ))}
+                </select>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 契約SNS選択 */}
+          <Card>
+            <CardHeader 
+              className="cursor-pointer hover:bg-muted/50 transition-colors"
+              onClick={() => toggleSection('sns')}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-lg">契約SNS</CardTitle>
+                  <CardDescription>利用するSNSプラットフォームを選択してください（最大3つまで）</CardDescription>
+                </div>
+                {expandedSections.sns ? (
+                  <ChevronUp className="h-5 w-5 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                )}
+              </div>
+            </CardHeader>
+            {expandedSections.sns && (
             <CardContent>
               <div className="grid grid-cols-2 gap-4">
                 {snsOptions.map((sns) => (
@@ -631,17 +749,90 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
                 ))}
               </div>
             </CardContent>
+            )}
+          </Card>
+
+          {/* 目標・課題（Userレベル） */}
+          <Card>
+            <CardHeader 
+              className="cursor-pointer hover:bg-muted/50 transition-colors"
+              onClick={() => toggleSection('goals')}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-lg">目標・課題</CardTitle>
+                  <CardDescription>
+                    ユーザーの目標と課題を設定します（onboardingページ用）
+                  </CardDescription>
+                </div>
+                {expandedSections.goals ? (
+                  <ChevronUp className="h-5 w-5 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                )}
+              </div>
+            </CardHeader>
+            {expandedSections.goals && (
+            <CardContent className="space-y-4">
+              {/* 目標 */}
+              <div>
+                <label className="block text-sm font-medium mb-2">目標（複数選択可）</label>
+                {formData.goals && formData.goals.length > 0 && (
+                  <div className="space-y-2 mb-3">
+                    {formData.goals.map((goal, index) => (
+                      <div key={index} className="flex items-center gap-2 p-2 bg-muted rounded">
+                        <span className="flex-1">{goal}</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveGoal(index)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newGoal}
+                    onChange={(e) => setNewGoal(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleAddGoal()}
+                    className="flex-1 px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                    placeholder="目標を入力"
+                  />
+                  <Button onClick={handleAddGoal} size="sm">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+            )}
           </Card>
 
           {/* SNS AI設定 */}
           {formData.contractSNS && formData.contractSNS.length > 0 && (
             <Card>
-              <CardHeader>
-                <CardTitle>各SNS AI設定</CardTitle>
-                <CardDescription>
-                  なぜそのSNSを選んだのか？そのSNSで何を達成するのか？を明確にしてください
-                </CardDescription>
+              <CardHeader 
+                className="cursor-pointer hover:bg-muted/50 transition-colors"
+                onClick={() => toggleSection('aiSettings')}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg">各SNS AI設定</CardTitle>
+                    <CardDescription>
+                      なぜそのSNSを選んだのか？そのSNSで何を達成するのか？を明確にしてください
+                    </CardDescription>
+                  </div>
+                  {expandedSections.aiSettings ? (
+                    <ChevronUp className="h-5 w-5 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                  )}
+                </div>
               </CardHeader>
+              {expandedSections.aiSettings && (
               <CardContent className="space-y-6">
                 {formData.contractSNS.map((sns) => {
                   const setting = formData.snsAISettings![sns as keyof SNSAISettings]
@@ -789,21 +980,97 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
                           placeholder="その他、AIに伝えたい戦略や注意点"
                         />
                       </div>
+
+                      {/* Instagram専用フィールド（onboardingページ用） */}
+                      {sns === 'instagram' && (
+                        <div className="border-t-2 border-primary/20 pt-4 mt-4 space-y-4">
+                          <h5 className="font-medium text-sm text-primary">Instagram AI設定（onboardingページ用）</h5>
+                          
+                          <div>
+                            <label className="block text-sm font-medium mb-2">マナー・ルール</label>
+                            <textarea
+                              value={setting.manner || ''}
+                              onChange={(e) => handleSNSSettingChange(sns, 'manner', e.target.value)}
+                              className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                              rows={2}
+                              placeholder="Instagram投稿時のマナー・ルールを入力"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium mb-2">注意事項・NGワード</label>
+                            <textarea
+                              value={setting.cautions || ''}
+                              onChange={(e) => handleSNSSettingChange(sns, 'cautions', e.target.value)}
+                              className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                              rows={2}
+                              placeholder="避けるべき表現やNGワードを入力"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium mb-2">目標・目的</label>
+                            <textarea
+                              value={setting.goals || ''}
+                              onChange={(e) => handleSNSSettingChange(sns, 'goals', e.target.value)}
+                              className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                              rows={2}
+                              placeholder="Instagramでの目標・目的を入力"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium mb-2">モチベーション・想い</label>
+                            <textarea
+                              value={setting.motivation || ''}
+                              onChange={(e) => handleSNSSettingChange(sns, 'motivation', e.target.value)}
+                              className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                              rows={2}
+                              placeholder="ブランドのモチベーションや想いを入力"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium mb-2">追加情報・その他</label>
+                            <textarea
+                              value={setting.additionalInfo || ''}
+                              onChange={(e) => handleSNSSettingChange(sns, 'additionalInfo', e.target.value)}
+                              className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                              rows={2}
+                              placeholder="その他の追加情報を入力"
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )
                 })}
               </CardContent>
+              )}
             </Card>
           )}
 
           {/* 事業情報 */}
           <Card>
-            <CardHeader>
-              <CardTitle>事業情報</CardTitle>
-              <CardDescription>
-                SNSを使って何を達成したいのか？事業の核となる情報を入力してください
-              </CardDescription>
+            <CardHeader 
+              className="cursor-pointer hover:bg-muted/50 transition-colors"
+              onClick={() => toggleSection('business')}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-lg">事業情報</CardTitle>
+                  <CardDescription>
+                    SNSを使って何を達成したいのか？事業の核となる情報を入力してください
+                  </CardDescription>
+                </div>
+                {expandedSections.business ? (
+                  <ChevronUp className="h-5 w-5 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                )}
+              </div>
             </CardHeader>
+            {expandedSections.business && (
             <CardContent className="space-y-4">
               <div className="grid grid-cols-3 gap-4">
                 <div>
@@ -869,6 +1136,187 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
                   rows={3}
                   placeholder="事業の詳細を入力してください"
                 />
+              </div>
+
+              {/* ターゲット市場 */}
+              <div>
+                <label className="block text-sm font-medium mb-2">ターゲット市場</label>
+                <p className="text-xs text-muted-foreground mb-2">
+                  複数のターゲット市場を追加できます
+                </p>
+                {formData.businessInfo?.targetMarket && formData.businessInfo.targetMarket.length > 0 && (
+                  <div className="space-y-2 mb-3">
+                    {formData.businessInfo.targetMarket.map((market, index) => (
+                      <div key={index} className="flex items-center gap-2 p-2 bg-muted rounded">
+                        <span className="flex-1">{market}</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveTargetMarket(index)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newTargetMarket}
+                    onChange={(e) => setNewTargetMarket(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleAddTargetMarket()}
+                    className="flex-1 px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                    placeholder="ターゲット市場を入力"
+                  />
+                  <Button onClick={handleAddTargetMarket} size="sm">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* キャッチコピー */}
+              <div>
+                <label className="block text-sm font-medium mb-2">キャッチコピー</label>
+                <input
+                  type="text"
+                  value={formData.businessInfo?.catchphrase || ''}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    businessInfo: { ...formData.businessInfo!, catchphrase: e.target.value }
+                  })}
+                  className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                  placeholder="キャッチコピーを入力"
+                />
+              </div>
+
+              {/* 利用開始日時点のフォロワー数 */}
+              <div>
+                <label className="block text-sm font-medium mb-2">利用開始日時点のフォロワー数</label>
+                <input
+                  type="number"
+                  value={formData.businessInfo?.initialFollowers || 0}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    businessInfo: { ...formData.businessInfo!, initialFollowers: parseInt(e.target.value) || 0 }
+                  })}
+                  className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                  placeholder="0"
+                  min="0"
+                />
+              </div>
+
+              {/* 商品・サービス情報 */}
+              <div className="border-2 border-primary/20 rounded-lg p-4 bg-primary/5">
+                <label className="block text-sm font-medium mb-2">
+                  商品・サービス情報
+                  <span className="text-xs text-muted-foreground ml-2">
+                    （会員サイト側でユーザーが編集可能）
+                  </span>
+                </label>
+                {formData.businessInfo?.productsOrServices && formData.businessInfo.productsOrServices.length > 0 && (
+                  <div className="space-y-2 mb-3">
+                    {formData.businessInfo.productsOrServices.map((product, index) => (
+                      <div key={product.id} className="flex items-start gap-2 p-3 bg-background rounded border">
+                        <div className="flex-1">
+                          <div className="font-medium">{product.name}</div>
+                          {product.details && (
+                            <div className="text-sm text-muted-foreground mt-1">{product.details}</div>
+                          )}
+                          {product.price && (
+                            <div className="text-sm font-semibold mt-1">¥{product.price}</div>
+                          )}
+                        </div>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditProduct(index)}
+                          >
+                            編集
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRemoveProduct(index)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {editingProductIndex === null ? (
+                  <div className="space-y-2">
+                    <input
+                      type="text"
+                      value={editingProduct.name || ''}
+                      onChange={(e) => setEditingProduct({ ...editingProduct, name: e.target.value })}
+                      className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                      placeholder="商品・サービス名"
+                    />
+                    <textarea
+                      value={editingProduct.details || ''}
+                      onChange={(e) => setEditingProduct({ ...editingProduct, details: e.target.value })}
+                      className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                      rows={2}
+                      placeholder="詳細"
+                    />
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={editingProduct.price || ''}
+                        onChange={(e) => setEditingProduct({ ...editingProduct, price: e.target.value })}
+                        className="flex-1 px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                        placeholder="価格（税込）例: 1,000円"
+                      />
+                      <Button onClick={handleAddProduct} size="sm">
+                        <Plus className="h-4 w-4 mr-1" />
+                        追加
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <input
+                      type="text"
+                      value={editingProduct.name || ''}
+                      onChange={(e) => setEditingProduct({ ...editingProduct, name: e.target.value })}
+                      className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                      placeholder="商品・サービス名"
+                    />
+                    <textarea
+                      value={editingProduct.details || ''}
+                      onChange={(e) => setEditingProduct({ ...editingProduct, details: e.target.value })}
+                      className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                      rows={2}
+                      placeholder="詳細"
+                    />
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={editingProduct.price || ''}
+                        onChange={(e) => setEditingProduct({ ...editingProduct, price: e.target.value })}
+                        className="flex-1 px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                        placeholder="価格（税込）例: 1,000円"
+                      />
+                      <Button onClick={handleUpdateProduct} size="sm">
+                        更新
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setEditingProduct({ name: '', details: '', price: '' })
+                          setEditingProductIndex(null)
+                        }}
+                        size="sm"
+                      >
+                        キャンセル
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* SNS活用の大目標 */}
@@ -1040,13 +1488,27 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
                 </div>
               </div>
             </CardContent>
+            )}
           </Card>
 
           {/* 契約・課金情報 */}
           <Card>
-            <CardHeader>
-              <CardTitle>契約・課金情報</CardTitle>
+            <CardHeader 
+              className="cursor-pointer hover:bg-muted/50 transition-colors"
+              onClick={() => toggleSection('billing')}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-lg">契約・課金情報</CardTitle>
+                </div>
+                {expandedSections.billing ? (
+                  <ChevronUp className="h-5 w-5 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                )}
+              </div>
             </CardHeader>
+            {expandedSections.billing && (
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -1169,167 +1631,27 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
                 </div>
               </div>
             </CardContent>
-          </Card>
-
-          {/* AI初期設定（会員サイト向け） */}
-          <Card>
-            <CardHeader>
-              <CardTitle>AI初期設定</CardTitle>
-              <CardDescription>
-                会員サイトでのAI機能のデフォルト設定を行います
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">デフォルトトーン</label>
-                  <select
-                    value={formData.aiInitialSettings?.defaultTone || 'professional'}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      aiInitialSettings: {
-                        ...formData.aiInitialSettings!,
-                        defaultTone: e.target.value
-                      }
-                    })}
-                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-                  >
-                    <option value="professional">プロフェッショナル</option>
-                    <option value="casual">カジュアル</option>
-                    <option value="friendly">フレンドリー</option>
-                    <option value="formal">フォーマル</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2">デフォルト言語</label>
-                  <select
-                    value={formData.aiInitialSettings?.defaultLanguage || 'ja'}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      aiInitialSettings: {
-                        ...formData.aiInitialSettings!,
-                        defaultLanguage: e.target.value as 'ja' | 'en'
-                      }
-                    })}
-                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-                  >
-                    <option value="ja">日本語</option>
-                    <option value="en">English</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">推奨コンテンツ長</label>
-                  <select
-                    value={formData.aiInitialSettings?.contentPreferences?.preferredLength || 'medium'}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      aiInitialSettings: {
-                        ...formData.aiInitialSettings!,
-                        contentPreferences: {
-                          ...formData.aiInitialSettings?.contentPreferences,
-                          preferredLength: e.target.value as 'short' | 'medium' | 'long'
-                        }
-                      }
-                    })}
-                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-                  >
-                    <option value="short">短め</option>
-                    <option value="medium">中程度</option>
-                    <option value="long">長め</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2">ハッシュタグ戦略</label>
-                  <select
-                    value={formData.aiInitialSettings?.contentPreferences?.hashtagStrategy || 'moderate'}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      aiInitialSettings: {
-                        ...formData.aiInitialSettings!,
-                        contentPreferences: {
-                          ...formData.aiInitialSettings?.contentPreferences,
-                          hashtagStrategy: e.target.value as 'minimal' | 'moderate' | 'aggressive'
-                        }
-                      }
-                    })}
-                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-                  >
-                    <option value="minimal">最小限</option>
-                    <option value="moderate">適度</option>
-                    <option value="aggressive">積極的</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2">絵文字使用頻度</label>
-                  <select
-                    value={formData.aiInitialSettings?.contentPreferences?.emojiUsage || 'moderate'}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      aiInitialSettings: {
-                        ...formData.aiInitialSettings!,
-                        contentPreferences: {
-                          ...formData.aiInitialSettings?.contentPreferences,
-                          emojiUsage: e.target.value as 'none' | 'minimal' | 'moderate' | 'frequent'
-                        }
-                      }
-                    })}
-                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-                  >
-                    <option value="none">なし</option>
-                    <option value="minimal">最小限</option>
-                    <option value="moderate">適度</option>
-                    <option value="frequent">頻繁</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">有効化された機能</label>
-                <div className="space-y-2">
-                  {['auto-hashtag', 'schedule-optimization', 'content-suggestion', 'analytics-insight'].map((feature) => (
-                    <label key={feature} className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={formData.aiInitialSettings?.enabledFeatures?.includes(feature) || false}
-                        onChange={(e) => {
-                          const currentFeatures = formData.aiInitialSettings?.enabledFeatures || []
-                          const newFeatures = e.target.checked
-                            ? [...currentFeatures, feature]
-                            : currentFeatures.filter(f => f !== feature)
-                          setFormData({
-                            ...formData,
-                            aiInitialSettings: {
-                              ...formData.aiInitialSettings!,
-                              enabledFeatures: newFeatures
-                            }
-                          })
-                        }}
-                        className="rounded border-border"
-                      />
-                      <span className="text-sm">
-                        {feature === 'auto-hashtag' && '自動ハッシュタグ生成'}
-                        {feature === 'schedule-optimization' && '投稿スケジュール最適化'}
-                        {feature === 'content-suggestion' && 'コンテンツ提案'}
-                        {feature === 'analytics-insight' && '分析インサイト'}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            </CardContent>
+            )}
           </Card>
 
           {/* メモ */}
           <Card>
-            <CardHeader>
-              <CardTitle>メモ</CardTitle>
+            <CardHeader 
+              className="cursor-pointer hover:bg-muted/50 transition-colors"
+              onClick={() => toggleSection('notes')}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-lg">メモ</CardTitle>
+                </div>
+                {expandedSections.notes ? (
+                  <ChevronUp className="h-5 w-5 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                )}
+              </div>
             </CardHeader>
+            {expandedSections.notes && (
             <CardContent>
               <textarea
                 value={formData.notes || ''}
@@ -1339,6 +1661,7 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
                 placeholder="管理者用メモ..."
               />
             </CardContent>
+            )}
           </Card>
         </div>
 
