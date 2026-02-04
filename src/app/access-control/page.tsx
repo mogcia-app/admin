@@ -8,9 +8,15 @@ import { FeatureControlCard } from '@/components/access-control/feature-control-
 import { SystemStatusCard } from '@/components/access-control/system-status-card'
 import { EmergencySecurityCard } from '@/components/access-control/emergency-security-card'
 import { useAccessControl, useSystemStatus, useEmergencySecurityMode } from '@/hooks/useAccessControl'
-import { API_ENDPOINTS, apiPost, apiGet } from '@/lib/api-config'
+import { getToolMaintenanceStatus, setToolMaintenanceMode, ToolMaintenanceStatus } from '@/lib/tool-maintenance-api'
+import { useAuth } from '@/contexts/auth-context'
+import { Textarea } from '@/components/ui/textarea'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
 
 export default function AccessControlPage() {
+  const { user, adminUser } = useAuth()
   const { 
     accessControls, 
     loading, 
@@ -41,27 +47,29 @@ export default function AccessControlPage() {
   const [activeTab, setActiveTab] = useState<'features' | 'system' | 'tool' | 'emergency'>('features')
   
   // ツール側メンテナンス状態
-  const [toolMaintenance, setToolMaintenance] = useState({
-    enabled: false,
-    message: '',
-    scheduledStart: '',
-    scheduledEnd: '',
-    updatedBy: '',
-    updatedAt: null
-  })
+  const [toolMaintenance, setToolMaintenance] = useState<ToolMaintenanceStatus | null>(null)
   const [toolMaintenanceLoading, setToolMaintenanceLoading] = useState(false)
   const [toolMaintenanceError, setToolMaintenanceError] = useState<string | null>(null)
+  const [toolMaintenanceSuccess, setToolMaintenanceSuccess] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
 
+  // フォーム状態
+  const [enabled, setEnabled] = useState(false)
+  const [message, setMessage] = useState('')
+  const [scheduledStart, setScheduledStart] = useState('')
+  const [scheduledEnd, setScheduledEnd] = useState('')
 
   // ツール側メンテナンス状態を取得
   const fetchToolMaintenanceStatus = async () => {
     try {
       setToolMaintenanceLoading(true)
       setToolMaintenanceError(null)
-      const response = await apiGet(API_ENDPOINTS.toolMaintenance.getStatus)
-      if (response.success) {
-        setToolMaintenance(response.data)
-      }
+      const status = await getToolMaintenanceStatus()
+      setToolMaintenance(status)
+      setEnabled(status.enabled)
+      setMessage(status.message || '')
+      setScheduledStart(status.scheduledStart || '')
+      setScheduledEnd(status.scheduledEnd || '')
     } catch (err) {
       // CORSエラーやAPI未実装の場合は、エラーを表示せずにデフォルト値を維持
       const error = err instanceof Error ? err.message : String(err)
@@ -77,46 +85,109 @@ export default function AccessControlPage() {
         }
       } else {
         // その他のエラーは表示
-      setToolMaintenanceError('ツール側メンテナンス状態の取得に失敗しました')
+        setToolMaintenanceError('ツール側メンテナンス状態の取得に失敗しました')
       }
     } finally {
       setToolMaintenanceLoading(false)
     }
   }
 
-  // ツール側メンテナンスモードを設定
-  const setToolMaintenanceMode = async (enabled: boolean, message?: string, scheduledStart?: string, scheduledEnd?: string) => {
+  // メンテナンスモードを設定（詳細設定フォーム用）
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSaving(true)
+    setToolMaintenanceError(null)
+    setToolMaintenanceSuccess(null)
+
     try {
-      setToolMaintenanceLoading(true)
-      setToolMaintenanceError(null)
-      
-      const response = await apiPost(API_ENDPOINTS.toolMaintenance.setMode, {
+      const result = await setToolMaintenanceMode({
         enabled,
-        message: message || 'システムメンテナンス中です。しばらくお待ちください。',
-        scheduledStart,
-        scheduledEnd,
-        updatedBy: 'admin'
+        message: message || undefined,
+        scheduledStart: scheduledStart || undefined,
+        scheduledEnd: scheduledEnd || undefined,
+        updatedBy: user?.email || adminUser?.email || user?.uid || 'admin',
       })
-      
-      if (response.success) {
-        setToolMaintenance(response.data)
-        alert('ツール側のメンテナンスモードを更新しました')
-      }
+
+      setToolMaintenance(result)
+      setToolMaintenanceSuccess(enabled ? 'メンテナンスモードを開始しました' : 'メンテナンスモードを終了しました')
     } catch (err) {
-      console.error('Error setting tool maintenance mode:', err)
       const error = err instanceof Error ? err.message : String(err)
       const isCorsError = error.includes('CORS') || error.includes('Failed to fetch')
       const isNetworkError = error.includes('404') || error.includes('NetworkError') || error.includes('ERR_FAILED')
       
       if (isCorsError || isNetworkError) {
-        // APIエンドポイントが未実装またはCORS設定不足の場合
-        alert('ツール側メンテナンス機能はまだ実装されていません。\n\nCloud Functionsの実装とCORS設定が必要です。\n\n実装予定の場合は、Functions側でCORSヘッダーを設定してください。')
         setToolMaintenanceError('APIエンドポイントが実装されていないか、CORS設定が必要です')
       } else {
-      setToolMaintenanceError('ツール側メンテナンスモードの設定に失敗しました')
+        setToolMaintenanceError(err instanceof Error ? err.message : '設定に失敗しました')
       }
     } finally {
-      setToolMaintenanceLoading(false)
+      setSaving(false)
+    }
+  }
+
+  // メンテナンス開始（即座）
+  const handleStartMaintenance = async () => {
+    setSaving(true)
+    setToolMaintenanceError(null)
+    setToolMaintenanceSuccess(null)
+
+    try {
+      const result = await setToolMaintenanceMode({
+        enabled: true,
+        message: message || 'システムメンテナンス中です。しばらくお待ちください。',
+        updatedBy: user?.email || adminUser?.email || user?.uid || 'admin',
+      })
+
+      setToolMaintenance(result)
+      setEnabled(true)
+      setMessage(result.message)
+      setToolMaintenanceSuccess('メンテナンスモードを開始しました')
+    } catch (err) {
+      const error = err instanceof Error ? err.message : String(err)
+      const isCorsError = error.includes('CORS') || error.includes('Failed to fetch')
+      const isNetworkError = error.includes('404') || error.includes('NetworkError') || error.includes('ERR_FAILED')
+      
+      if (isCorsError || isNetworkError) {
+        setToolMaintenanceError('APIエンドポイントが実装されていないか、CORS設定が必要です')
+      } else {
+        setToolMaintenanceError(err instanceof Error ? err.message : 'メンテナンス開始に失敗しました')
+      }
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // メンテナンス終了
+  const handleEndMaintenance = async () => {
+    setSaving(true)
+    setToolMaintenanceError(null)
+    setToolMaintenanceSuccess(null)
+
+    try {
+      const result = await setToolMaintenanceMode({
+        enabled: false,
+        message: '',
+        updatedBy: user?.email || adminUser?.email || user?.uid || 'admin',
+      })
+
+      setToolMaintenance(result)
+      setEnabled(false)
+      setMessage('')
+      setScheduledStart('')
+      setScheduledEnd('')
+      setToolMaintenanceSuccess('メンテナンスモードを終了しました')
+    } catch (err) {
+      const error = err instanceof Error ? err.message : String(err)
+      const isCorsError = error.includes('CORS') || error.includes('Failed to fetch')
+      const isNetworkError = error.includes('404') || error.includes('NetworkError') || error.includes('ERR_FAILED')
+      
+      if (isCorsError || isNetworkError) {
+        setToolMaintenanceError('APIエンドポイントが実装されていないか、CORS設定が必要です')
+      } else {
+        setToolMaintenanceError(err instanceof Error ? err.message : 'メンテナンス終了に失敗しました')
+      }
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -124,6 +195,16 @@ export default function AccessControlPage() {
   useEffect(() => {
     fetchToolMaintenanceStatus()
   }, [])
+
+  // ツール側メンテナンス状態が更新されたらフォーム状態も更新
+  useEffect(() => {
+    if (toolMaintenance) {
+      setEnabled(toolMaintenance.enabled)
+      setMessage(toolMaintenance.message || '')
+      setScheduledStart(toolMaintenance.scheduledStart || '')
+      setScheduledEnd(toolMaintenance.scheduledEnd || '')
+    }
+  }, [toolMaintenance])
 
   const handleRefresh = () => {
     refreshAccessControls()
@@ -388,7 +469,7 @@ export default function AccessControlPage() {
                       再試行
                     </Button>
                   </div>
-                ) : (
+                ) : toolMaintenance ? (
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <span className="font-medium">メンテナンスモード</span>
@@ -430,29 +511,45 @@ export default function AccessControlPage() {
                       </div>
                     )}
                   </div>
+                ) : (
+                  <div className="text-muted-foreground">
+                    状態を取得できませんでした
+                  </div>
                 )}
               </CardContent>
             </Card>
 
-            {/* メンテナンス制御 */}
+            {/* エラー・成功メッセージ */}
+            {toolMaintenanceError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+                {toolMaintenanceError}
+              </div>
+            )}
+            {toolMaintenanceSuccess && (
+              <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded">
+                {toolMaintenanceSuccess}
+              </div>
+            )}
+
+            {/* クイックアクション */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Shield className="h-5 w-5" />
-                  メンテナンス制御
+                  クイックアクション
                 </CardTitle>
                 <CardDescription>
-                  ツール側のログインを制御するためのメンテナンスモードを設定します
+                  メンテナンスモードを即座に開始・終了します
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex gap-4">
                   <Button
-                    onClick={() => setToolMaintenanceMode(true)}
-                    disabled={toolMaintenanceLoading || toolMaintenance.enabled}
+                    onClick={handleStartMaintenance}
+                    disabled={saving || toolMaintenance?.enabled}
                     className="bg-red-600 hover:bg-red-700"
                   >
-                    {toolMaintenanceLoading ? (
+                    {saving ? (
                       <Loader2 className="h-4 w-4 animate-spin mr-2" />
                     ) : (
                       <Wrench className="h-4 w-4 mr-2" />
@@ -461,12 +558,12 @@ export default function AccessControlPage() {
                   </Button>
                   
                   <Button
-                    onClick={() => setToolMaintenanceMode(false)}
-                    disabled={toolMaintenanceLoading || !toolMaintenance.enabled}
+                    onClick={handleEndMaintenance}
+                    disabled={saving || !toolMaintenance?.enabled}
                     variant="outline"
                     className="border-green-600 text-green-600 hover:bg-green-50"
                   >
-                    {toolMaintenanceLoading ? (
+                    {saving ? (
                       <Loader2 className="h-4 w-4 animate-spin mr-2" />
                     ) : (
                       <Activity className="h-4 w-4 mr-2" />
@@ -474,11 +571,92 @@ export default function AccessControlPage() {
                     メンテナンス終了
                   </Button>
                 </div>
-                
-                <div className="text-sm text-muted-foreground">
-                  <p>• <strong>メンテナンス開始:</strong> ツール側へのログインを無効にします</p>
-                  <p>• <strong>メンテナンス終了:</strong> ツール側へのログインを有効にします</p>
-                </div>
+              </CardContent>
+            </Card>
+
+            {/* 詳細設定フォーム */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Wrench className="h-5 w-5" />
+                  詳細設定
+                </CardTitle>
+                <CardDescription>
+                  メッセージやスケジュールを設定してメンテナンスモードを制御します
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  {/* メンテナンスモード有効化 */}
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="enabled"
+                      checked={enabled}
+                      onCheckedChange={(checked) => setEnabled(checked === true)}
+                    />
+                    <Label htmlFor="enabled" className="font-semibold cursor-pointer">
+                      メンテナンスモードを有効化
+                    </Label>
+                  </div>
+
+                  {/* メッセージ */}
+                  <div>
+                    <Label htmlFor="message" className="block text-sm font-medium mb-2">
+                      メンテナンスメッセージ
+                    </Label>
+                    <Textarea
+                      id="message"
+                      value={message}
+                      onChange={(e) => setMessage(e.target.value)}
+                      rows={4}
+                      placeholder="システムメンテナンス中です。しばらくお待ちください。"
+                    />
+                  </div>
+
+                  {/* スケジュール開始 */}
+                  <div>
+                    <Label htmlFor="scheduledStart" className="block text-sm font-medium mb-2">
+                      スケジュール開始日時（オプション）
+                    </Label>
+                    <Input
+                      type="datetime-local"
+                      id="scheduledStart"
+                      value={scheduledStart}
+                      onChange={(e) => setScheduledStart(e.target.value)}
+                    />
+                  </div>
+
+                  {/* スケジュール終了 */}
+                  <div>
+                    <Label htmlFor="scheduledEnd" className="block text-sm font-medium mb-2">
+                      スケジュール終了日時（オプション）
+                    </Label>
+                    <Input
+                      type="datetime-local"
+                      id="scheduledEnd"
+                      value={scheduledEnd}
+                      onChange={(e) => setScheduledEnd(e.target.value)}
+                    />
+                  </div>
+
+                  {/* 送信ボタン */}
+                  <div>
+                    <Button
+                      type="submit"
+                      disabled={saving}
+                      className="w-full"
+                    >
+                      {saving ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          保存中...
+                        </>
+                      ) : (
+                        '設定を保存'
+                      )}
+                    </Button>
+                  </div>
+                </form>
               </CardContent>
             </Card>
           </div>
