@@ -20,13 +20,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser)
       
       if (firebaseUser) {
         // Firebase ユーザーから管理者情報を取得
         const admin = getAdminUser(firebaseUser.email || '')
         setAdminUser(admin)
+        
+        // 管理者の場合、カスタムクレームを設定
+        if (admin && firebaseUser.email) {
+          try {
+            // カスタムクレームが設定されているか確認
+            const tokenResult = await firebaseUser.getIdTokenResult()
+            if (!tokenResult.claims.admin) {
+              // カスタムクレームが設定されていない場合、APIを呼び出して設定
+              await fetch('/api/auth/set-admin-claims', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  uid: firebaseUser.uid,
+                  email: firebaseUser.email,
+                }),
+              })
+              // トークンを再取得してカスタムクレームを反映
+              await firebaseUser.getIdToken(true)
+            }
+          } catch (error) {
+            console.error('Error setting admin claims:', error)
+            // エラーが発生しても続行（カスタムクレームが設定されていない場合でも動作するように）
+          }
+        }
       } else {
         setAdminUser(null)
       }

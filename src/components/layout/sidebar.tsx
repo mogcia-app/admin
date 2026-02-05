@@ -14,6 +14,7 @@ import {
   Bell,
   Shield,
   Building2,
+  FileText,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -49,6 +50,12 @@ const sidebarItems: SidebarItem[] = [
     label: 'お知らせ管理',
     icon: Bell,
     href: '/notifications',
+  },
+  {
+    id: 'invoice-notifications',
+    label: '請求書発行通知',
+    icon: FileText,
+    href: '/invoice-notifications',
   },
   {
     id: 'guides',

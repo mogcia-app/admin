@@ -4,10 +4,16 @@ service cloud.firestore {
   match /databases/{database}/documents {
     // 管理者メールアドレスのリスト
     function isAdminEmail() {
+      // 認証されていない場合は false
       return request.auth != null && (
-        request.auth.token.email == 'marina.ishida@signalapp.jp' ||
-        request.auth.token.email == 'hiroto.domoto@signalapp.jp' ||
-        request.auth.token.email == 'kentarou.kitamura@signalapp.jp'
+        // カスタムクレームで管理者フラグを確認（優先）
+        request.auth.token.admin == true ||
+        // IDトークンからメールアドレスを取得して管理者メールアドレスのリストと照合
+        (request.auth.token.email != null && (
+          request.auth.token.email == 'marina.ishida@signalapp.jp' ||
+          request.auth.token.email == 'hiroto.domoto@signalapp.jp' ||
+          request.auth.token.email == 'kentarou.kitamura@signalapp.jp'
+        ))
       );
     }
     
