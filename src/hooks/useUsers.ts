@@ -5,6 +5,7 @@ import { User, UserStats } from '@/types'
 import { userService } from '@/lib/firebase-admin'
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import { retryOnPermissionError, refreshAuthToken } from '@/lib/firebase-utils'
 
 export function useUsers() {
   const [users, setUsers] = useState<User[]>([])
@@ -33,9 +34,29 @@ export function useUsers() {
           setLoading(false)
         }
       },
-      (err) => {
+      async (err: any) => {
         console.error('Error fetching users:', err)
-        setError('ユーザーデータの取得に失敗しました。Firebase接続を確認してください。')
+        
+        // 権限エラーの場合、トークンを再取得してリトライ
+        if (
+          err?.code === 'permission-denied' ||
+          err?.message?.includes('Missing or insufficient permissions')
+        ) {
+          try {
+            await refreshAuthToken()
+            // トークン更新後、少し待ってから再試行
+            setTimeout(() => {
+              // onSnapshotは自動的に再試行されるため、ここではエラーメッセージのみ更新
+              setError('権限エラーが発生しました。ページをリロードしてください。')
+            }, 1000)
+          } catch (refreshError) {
+            console.error('Failed to refresh token:', refreshError)
+            setError('ユーザーデータの取得に失敗しました。Firebase接続を確認してください。')
+          }
+        } else {
+          setError('ユーザーデータの取得に失敗しました。Firebase接続を確認してください。')
+        }
+        
         setUsers([])
         setLoading(false)
       }
@@ -130,7 +151,7 @@ export function useUserStats() {
     const fetchStats = async () => {
       try {
         setLoading(true)
-        const users = await userService.getUsers()
+        const users = await retryOnPermissionError(() => userService.getUsers())
         
         const totalUsers = users.length
         const activeUsers = users.filter(user => user.isActive).length

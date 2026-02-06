@@ -31,11 +31,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // 管理者の場合、カスタムクレームを設定
         if (admin && firebaseUser.email) {
           try {
-            // カスタムクレームが設定されているか確認
-            const tokenResult = await firebaseUser.getIdTokenResult()
+            // カスタムクレームが設定されているか確認（常に最新のトークンを取得）
+            let tokenResult = await firebaseUser.getIdTokenResult(true)
+            
+            // デバッグ: トークンの内容を確認
+            console.log('Token claims:', {
+              admin: tokenResult.claims.admin,
+              email: tokenResult.claims.email,
+              allClaims: tokenResult.claims
+            })
+            
             if (!tokenResult.claims.admin) {
               // カスタムクレームが設定されていない場合、APIを呼び出して設定
-              await fetch('/api/auth/set-admin-claims', {
+              console.log('Admin claims not found, setting...')
+              const response = await fetch('/api/auth/set-admin-claims', {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
@@ -45,11 +54,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                   email: firebaseUser.email,
                 }),
               })
-              // トークンを再取得してカスタムクレームを反映
+              
+              if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}))
+                console.error('Failed to set admin claims:', response.status, response.statusText, errorData)
+              } else {
+                // トークンを強制的に再取得してカスタムクレームを反映
+                await firebaseUser.getIdToken(true)
+                // 再取得したトークンで再度確認
+                tokenResult = await firebaseUser.getIdTokenResult(true)
+                console.log('Token claims after setting:', {
+                  admin: tokenResult.claims.admin,
+                  email: tokenResult.claims.email,
+                  allClaims: tokenResult.claims
+                })
+                if (tokenResult.claims.admin) {
+                  console.log('✅ Admin claims successfully set and verified')
+                  // Firestoreが新しいトークンを使用するように、少し待つ
+                  await new Promise(resolve => setTimeout(resolve, 1000))
+                } else {
+                  console.warn('⚠️ Admin claims may not be set correctly')
+                }
+              }
+            } else {
+              console.log('✅ Admin claims already set in token')
+              // 念のため、トークンを再取得してFirestoreが最新のトークンを使用するようにする
               await firebaseUser.getIdToken(true)
+              await new Promise(resolve => setTimeout(resolve, 500))
             }
           } catch (error) {
-            console.error('Error setting admin claims:', error)
+            console.error('❌ Error setting admin claims:', error)
             // エラーが発生しても続行（カスタムクレームが設定されていない場合でも動作するように）
           }
         }

@@ -8,3 +8,4 @@ export default function InvoiceNotificationsLayout({
   return <AdminLayout>{children}</AdminLayout>
 }
 
+

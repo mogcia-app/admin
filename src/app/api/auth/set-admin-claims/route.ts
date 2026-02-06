@@ -1,8 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { setAdminClaims } from '@/lib/firebase-admin-server'
-import { auth } from '@/lib/firebase'
-import { getAuth } from 'firebase-admin/auth'
-import { adminAuth } from '@/lib/firebase-admin-server'
+
+// CORSプリフライトリクエストに対応
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    },
+  })
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,6 +30,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ 
       success: true,
       message: 'Admin claims set successfully' 
+    }, {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+      },
     })
   } catch (error) {
     console.error('Error setting admin claims:', error)
@@ -30,4 +43,5 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
 

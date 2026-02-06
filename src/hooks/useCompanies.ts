@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Company } from '@/types'
 import * as companyService from '@/lib/companies'
+import { retryOnPermissionError, refreshAuthToken } from '@/lib/firebase-utils'
 
 export function useCompanies() {
   const [companies, setCompanies] = useState<Company[]>([])
@@ -17,12 +18,38 @@ export function useCompanies() {
     try {
       setLoading(true)
       setError(null)
-      const companyData = await companyService.getCompanies()
+      const companyData = await retryOnPermissionError(() => companyService.getCompanies())
       setCompanies(companyData)
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error fetching companies:', err)
-      setError('企業データの取得に失敗しました。Firebase接続を確認してください。')
-      setCompanies([])
+      
+      // 権限エラーの場合、トークンを再取得してリトライ
+      if (
+        err?.code === 'permission-denied' ||
+        err?.message?.includes('Missing or insufficient permissions')
+      ) {
+        try {
+          await refreshAuthToken()
+          // トークン更新後、再試行
+          setTimeout(async () => {
+            try {
+              const retryData = await companyService.getCompanies()
+              setCompanies(retryData)
+              setError(null)
+            } catch (retryErr) {
+              setError('企業データの取得に失敗しました。ページをリロードしてください。')
+              setCompanies([])
+            }
+          }, 1000)
+        } catch (refreshError) {
+          console.error('Failed to refresh token:', refreshError)
+          setError('企業データの取得に失敗しました。Firebase接続を確認してください。')
+          setCompanies([])
+        }
+      } else {
+        setError('企業データの取得に失敗しました。Firebase接続を確認してください。')
+        setCompanies([])
+      }
     } finally {
       setLoading(false)
     }
@@ -90,6 +117,7 @@ export function useCompanies() {
     refreshCompanies: fetchCompanies
   }
 }
+
 
 
 

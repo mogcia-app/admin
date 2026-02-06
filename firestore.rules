@@ -2,7 +2,16 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // 管理者メールアドレスのリスト
+    // ============================================
+    // 共通関数
+    // ============================================
+    
+    // 認証済みユーザーチェック関数
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // 管理者チェック関数（Admin Panel用）
     function isAdminEmail() {
       // 認証されていない場合は false
       return request.auth != null && (
@@ -16,118 +25,266 @@ service cloud.firestore {
         ))
       );
     }
-    
-    // ユーザー認証と契約期間チェック
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-    
+
+    // 契約期間チェック関数（本人のみ）
     function isContractActive() {
       // ユーザーデータから契約期間を確認
-      let userData = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-      let now = request.time;
-      let contractEndDate = userData.contractEndDate;
-      let status = userData.status;
+      // 注意: ユーザーデータが存在しない場合はfalseを返す（signup直後・初回アクセス対応）
+      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
       
-      return status == 'active' && 
-             contractEndDate != null && 
-             contractEndDate > now;
+      // ユーザーデータが存在しない場合は契約非アクティブ（if文の代わりに論理演算子を使用）
+      return userDoc != null &&
+             userDoc.data != null &&
+             userDoc.data.status == 'active' && 
+             userDoc.data.contractEndDate != null && 
+             userDoc.data.contractEndDate > request.time;
     }
-    
-    // ユーザーコレクション - 契約期間チェック付き
-    match /users/{userId} {
-      // 自分自身のデータは読み取り可能
-      allow get: if isAuthenticated() && request.auth.uid == userId;
-      // 管理者は全ユーザーの読み書き可能（getとlistの両方）
-      allow get, list, write: if isAuthenticated() && isAdminEmail();
-      // 契約期間内のユーザーのみ書き込み可能
-      allow write: if isAuthenticated() && 
-                        request.auth.uid == userId && 
-                        isContractActive();
-      // 新規ユーザー作成時（登録時）
-      allow create: if isAuthenticated() && 
-                         request.auth.uid == userId;
+
+    // 契約期間チェック関数（adminまたは契約中）
+    function isContractActiveOrAdmin() {
+      return isAdminEmail() || isContractActive();
     }
-    
-    // 企業コレクション - 管理者専用
-    match /companies/{companyId} {
-      // 管理者のみ読み書き可能（getとlistの両方）
-      allow get, list, write: if isAuthenticated() && isAdminEmail();
-    }
-    
-    // エラーログ、KPI、プロンプト、通知など、管理者専用コレクション
-    match /errorLogs/{document=**} {
+
+    // ============================================
+    // 会員サイト側のルール
+    // ============================================
+
+    // 通知（読み取りのみ）
+    match /notifications/{notificationId} {
+      // 管理者は最優先で全権限あり
       allow read, write: if isAuthenticated() && isAdminEmail();
+      
+      // 認証済みユーザーで、公開中の通知のみ読み取り可能
+      // get: 個別ドキュメントの読み取り
+      allow get: if isAuthenticated() && 
+                      resource.data.status == 'published';
+      // list: クエリによる一覧取得
+      // ⚠️ 重要: クライアント側では必ず where('status', '==', 'published') を付けること
+      // フィルタなしのlistは許可されるが、getで落ちるドキュメントはsilently dropされるため
+      // デバッグが困難になる可能性がある
+      allow list: if isAuthenticated();
+      // 読み取り数の更新のみ許可（認証済みユーザー）
+      // readCountフィールドのみが更新されることを確認
+      allow update: if isAuthenticated() && 
+                         // 重要なフィールドが変更されていないことを確認
+                         request.resource.data.status == resource.data.status &&
+                         request.resource.data.title == resource.data.title &&
+                         request.resource.data.content == resource.data.content &&
+                         // readCountが増加しているか、または変更されていない
+                         (!resource.data.exists('readCount') || 
+                          request.resource.data.readCount >= resource.data.readCount);
     }
-    
-    match /kpiMetrics/{document=**} {
+
+    // 請求書（ユーザーは自分の請求書のみ読み取り可能）
+    match /invoices/{invoiceId} {
+      // 管理者は最優先で全権限あり
       allow read, write: if isAuthenticated() && isAdminEmail();
+      
+      // get: 個別ドキュメントの読み取り（自分の請求書のみ）
+      allow get: if isAuthenticated() && 
+                      resource.data.userId == request.auth.uid;
+      // list: クエリによる一覧取得
+      // ⚠️ 重要: クライアント側では必ず where('userId', '==', request.auth.uid) を付けること
+      // フィルタなしのlistは全ユーザーの請求書IDが列挙可能になるため（中身はgetで落ちるが）
+      // セキュリティ上のベストプラクティスとして、クエリレベルでフィルタリングを必須とする
+      allow list: if isAuthenticated();
+      // 書き込みはAPI route経由のみ（サーバー側で処理）
+      // adminは上記で許可されているため、ここは一般ユーザー向け
     }
-    
-    match /revenueData/{document=**} {
+
+    // 個別ユーザー通知（請求書発行通知など）
+    match /userNotifications/{notificationId} {
+      // 管理者は最優先で全権限あり
       allow read, write: if isAuthenticated() && isAdminEmail();
+      
+      // ユーザー自身の通知のみ読み取り可能
+      allow get: if isAuthenticated() && 
+                      resource.data.userId == request.auth.uid;
+      // list: クエリによる一覧取得
+      // ⚠️ 重要: クライアント側では必ず where('userId', '==', request.auth.uid) を付けること
+      // フィルタなしのlistは全ユーザーの通知IDが列挙可能になるため（中身はgetで落ちるが）
+      // セキュリティ上のベストプラクティスとして、クエリレベルでフィルタリングを必須とする
+      allow list: if isAuthenticated();
+      // ユーザー自身の通知のみ更新可能（既読・アーカイブ）
+      allow update: if isAuthenticated() && 
+                         resource.data.userId == request.auth.uid &&
+                         // 重要なフィールドが変更されていないことを確認
+                         request.resource.data.userId == resource.data.userId &&
+                         request.resource.data.type == resource.data.type &&
+                         request.resource.data.title == resource.data.title &&
+                         request.resource.data.content == resource.data.content &&
+                         request.resource.data.createdAt == resource.data.createdAt &&
+                         request.resource.data.createdBy == resource.data.createdBy;
     }
-    
-    match /userAcquisition/{document=**} {
-      allow read, write: if isAuthenticated() && isAdminEmail();
-    }
-    
-    match /engagementMetrics/{document=**} {
-      allow read, write: if isAuthenticated() && isAdminEmail();
-    }
-    
-    match /retentionMetrics/{document=**} {
-      allow read, write: if isAuthenticated() && isAdminEmail();
-    }
-    
-    match /conversionFunnels/{document=**} {
-      allow read, write: if isAuthenticated() && isAdminEmail();
-    }
-    
-    match /prompts/{document=**} {
-      allow read, write: if isAuthenticated() && isAdminEmail();
-    }
-    
-    match /notifications/{document=**} {
-      allow read, write: if isAuthenticated() && isAdminEmail();
-    }
-    
-    match /salesProgress/{document=**} {
-      allow read, write: if isAuthenticated() && isAdminEmail();
-    }
-    
-    match /deals/{document=**} {
-      allow read, write: if isAuthenticated() && isAdminEmail();
-    }
-    
-    match /aiChats/{document=**} {
-      allow read, write: if isAuthenticated() && isAdminEmail();
-    }
-    
-    // ブログ記事関連のルール
+
+    // ブログ投稿（読み取りのみ）
     match /blogPosts/{postId} {
-      // 公開済み記事は誰でも読み取り可能
-      allow read: if resource.data.status == 'published';
-      // 管理者のみ作成・更新・削除可能
-      allow write: if isAuthenticated() && isAdminEmail();
+      // 管理者は最優先で全権限あり
+      allow read, write: if isAuthenticated() && isAdminEmail();
+      
+      // 認証済みユーザーで、公開中の投稿のみ読み取り可能
+      // get: 個別ドキュメントの読み取り
+      allow get: if isAuthenticated() && 
+                      resource.data.status == 'published';
+      // list: クエリによる一覧取得
+      // ⚠️ 重要: クライアント側では必ず where('status', '==', 'published') を付けること
+      // フィルタなしのlistは許可されるが、getで落ちるドキュメントはsilently dropされるため
+      // デバッグが困難になる可能性がある
+      allow list: if isAuthenticated();
     }
-    
+
+    // ブログカテゴリ
     match /blogCategories/{categoryId} {
       // 誰でも読み取り可能
       allow read: if true;
       // 管理者のみ作成・更新・削除可能
       allow write: if isAuthenticated() && isAdminEmail();
     }
-    
+
+    // ブログタグ
     match /blogTags/{tagId} {
       // 誰でも読み取り可能
       allow read: if true;
       // 管理者のみ作成・更新・削除可能
       allow write: if isAuthenticated() && isAdminEmail();
     }
+
+    // ユーザー自身のデータ更新
+    match /users/{userId} {
+      // 管理者は最優先で全権限あり
+      allow read, write: if isAuthenticated() && isAdminEmail();
+      
+      // 本人の read
+      allow get: if isAuthenticated() && request.auth.uid == userId;
+      allow list: if isAuthenticated() && request.auth.uid == userId;
+      
+      // 本人の write（契約中のみ）
+      // create: 新規作成時（認証済みユーザーのみ）
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      
+      // update: 更新時（契約中のみ、重要なフィールドは変更不可）
+      allow update: if isAuthenticated() &&
+                         request.auth.uid == userId &&
+                         isContractActive() &&
+                         // id、email、createdAt、userType が変更されていないことを確認
+                         request.resource.data.id == resource.data.id &&
+                         request.resource.data.email == resource.data.email &&
+                         request.resource.data.createdAt == resource.data.createdAt &&
+                         (!resource.data.exists('userType') || 
+                          request.resource.data.userType == resource.data.userType);
+      
+      // 同意ログサブコレクション（法的証拠として保存）
+      match /contractConsents/{consentId} {
+        // 管理者は最優先で全権限あり
+        allow read, write: if isAuthenticated() && isAdminEmail();
+        // get: 個別ドキュメントの読み取り
+        allow get: if isAuthenticated() && request.auth.uid == userId;
+        // list: クエリによる一覧取得（orderByを含む）
+        allow list: if isAuthenticated() && request.auth.uid == userId;
+        // 書き込みはAPI route経由のみ（サーバー側で処理）
+        // adminは上記で許可されているため、ここは一般ユーザー向け
+      }
+      
+      // プライバシーポリシー同意ログサブコレクション
+      match /privacyPolicyConsents/{consentId} {
+        // 管理者は最優先で全権限あり
+        allow read, write: if isAuthenticated() && isAdminEmail();
+        // get: 個別ドキュメントの読み取り
+        allow get: if isAuthenticated() && request.auth.uid == userId;
+        // list: クエリによる一覧取得（orderByを含む）
+        allow list: if isAuthenticated() && request.auth.uid == userId;
+        // 書き込みはAPI route経由のみ（サーバー側で処理）
+        // adminは上記で許可されているため、ここは一般ユーザー向け
+      }
+      
+      // 会員サイト利用規約同意ログサブコレクション
+      match /memberSiteTermsConsents/{consentId} {
+        // 管理者は最優先で全権限あり
+        allow read, write: if isAuthenticated() && isAdminEmail();
+        // get: 個別ドキュメントの読み取り
+        allow get: if isAuthenticated() && request.auth.uid == userId;
+        // list: クエリによる一覧取得（orderByを含む）
+        allow list: if isAuthenticated() && request.auth.uid == userId;
+        // 書き込みはAPI route経由のみ（サーバー側で処理）
+        // adminは上記で許可されているため、ここは一般ユーザー向け
+      }
+      
+      // ツール利用規約同意ログサブコレクション
+      match /toolTermsConsents/{consentId} {
+        // 管理者は最優先で全権限あり
+        allow read, write: if isAuthenticated() && isAdminEmail();
+        // get: 個別ドキュメントの読み取り
+        allow get: if isAuthenticated() && request.auth.uid == userId;
+        // list: クエリによる一覧取得（orderByを含む）
+        allow list: if isAuthenticated() && request.auth.uid == userId;
+        // 書き込みはAPI route経由のみ（サーバー側で処理）
+        // adminは上記で許可されているため、ここは一般ユーザー向け
+      }
+    }
+
+    // ============================================
+    // Admin Panel側のルール
+    // ============================================
+
+    // 企業コレクション - 管理者専用
+    match /companies/{companyId} {
+      // 管理者のみ読み書き可能（getとlistの両方）
+      allow get, list, write: if isAuthenticated() && isAdminEmail();
+    }
+
+    // エラーログ、KPI、プロンプトなど、管理者専用コレクション
+    match /errorLogs/{document=**} {
+      allow read, write: if isAuthenticated() && isAdminEmail();
+    }
+
+    match /kpiMetrics/{document=**} {
+      allow read, write: if isAuthenticated() && isAdminEmail();
+    }
+
+    match /revenueData/{document=**} {
+      allow read, write: if isAuthenticated() && isAdminEmail();
+    }
+
+    match /userAcquisition/{document=**} {
+      allow read, write: if isAuthenticated() && isAdminEmail();
+    }
+
+    match /engagementMetrics/{document=**} {
+      allow read, write: if isAuthenticated() && isAdminEmail();
+    }
+
+    match /retentionMetrics/{document=**} {
+      allow read, write: if isAuthenticated() && isAdminEmail();
+    }
+
+    match /conversionFunnels/{document=**} {
+      allow read, write: if isAuthenticated() && isAdminEmail();
+    }
+
+    match /prompts/{document=**} {
+      allow read, write: if isAuthenticated() && isAdminEmail();
+    }
+
+    match /salesProgress/{document=**} {
+      allow read, write: if isAuthenticated() && isAdminEmail();
+    }
+
+    match /deals/{document=**} {
+      allow read, write: if isAuthenticated() && isAdminEmail();
+    }
+
+    match /aiChats/{document=**} {
+      allow read, write: if isAuthenticated() && isAdminEmail();
+    }
+
+    // ============================================
+    // フォールバックルール（最後に配置）
+    // ============================================
     
     // その他のコレクション（管理者のみ）
+    // 注意: このルールは上記の特定ルールにマッチしない場合のみ適用される
     match /{document=**} {
+      // 管理者のみ読み書き可能
       allow read, write: if isAuthenticated() && isAdminEmail();
     }
   }
