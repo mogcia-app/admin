@@ -104,7 +104,9 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
 
   const [newFocusMetric, setNewFocusMetric] = useState('')
   const [newTargetMarket, setNewTargetMarket] = useState('')
-  const [newGoal, setNewGoal] = useState('')
+  // 目標・課題は記述式（改行区切り）で管理
+  const [goalsText, setGoalsText] = useState('')
+  const [challengesText, setChallengesText] = useState('')
   const [editingProductIndex, setEditingProductIndex] = useState<number | null>(null)
   const [editingProduct, setEditingProduct] = useState<Partial<ProductOrService>>({ name: '', details: '', price: '' })
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
@@ -149,6 +151,9 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
         contractStartDate: user.contractStartDate.split('T')[0] + 'T00:00:00Z',
         contractEndDate: user.contractEndDate.split('T')[0] + 'T00:00:00Z'
       })
+      // 目標・課題をテキスト形式で初期化（改行区切り）
+      setGoalsText((user.businessInfo?.goals || user.goals || []).join('\n'))
+      setChallengesText((user.businessInfo?.challenges || []).join('\n'))
     } else {
       // 事前選択された企業IDを設定
       if (preselectedCompanyId) {
@@ -182,7 +187,8 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
           uniqueValue: '',
           brandVoice: '',
           kpiTargets: [],
-          challenges: []
+          challenges: [],
+          goals: []
         },
         goals: [],
         status: 'active',
@@ -384,19 +390,29 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
     })
   }
 
-  const handleAddGoal = () => {
-    if (!newGoal.trim()) return
+  // 目標テキストを配列に変換して保存
+  const handleGoalsChange = (text: string) => {
+    setGoalsText(text)
+    const goalsArray = text.split('\n').filter(line => line.trim() !== '')
     setFormData({
       ...formData,
-      goals: [...(formData.goals || []), newGoal.trim()]
+      businessInfo: {
+        ...formData.businessInfo!,
+        goals: goalsArray
+      }
     })
-    setNewGoal('')
   }
 
-  const handleRemoveGoal = (index: number) => {
+  // 課題テキストを配列に変換して保存
+  const handleChallengesChange = (text: string) => {
+    setChallengesText(text)
+    const challengesArray = text.split('\n').filter(line => line.trim() !== '')
     setFormData({
       ...formData,
-      goals: formData.goals?.filter((_, i) => i !== index) || []
+      businessInfo: {
+        ...formData.businessInfo!,
+        challenges: challengesArray
+      }
     })
   }
 
@@ -469,6 +485,10 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
       return
     }
 
+    // 目標・課題テキストを配列に変換して保存
+    const goalsArray = goalsText.split('\n').filter(line => line.trim() !== '')
+    const challengesArray = challengesText.split('\n').filter(line => line.trim() !== '')
+
     // デバッグ用：送信データを確認
     console.log('Saving user data:', {
       ...formData,
@@ -484,6 +504,11 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
 
     onSave({
       ...formData,
+      businessInfo: {
+        ...formData.businessInfo!,
+        goals: goalsArray,
+        challenges: challengesArray
+      },
       updatedAt: new Date().toISOString()
     })
     onClose()
@@ -692,9 +717,9 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-lg">目標・課題</CardTitle>
+                  <CardTitle className="text-lg">基本方針・長期目標</CardTitle>
                   <CardDescription>
-                    ユーザーの目標と課題を設定します（onboardingページ用）
+                    この目標は、あなたのビジネスの根幹となる基本方針です。月ごとに変わる目標は、運用計画ページで設定できます。
                   </CardDescription>
                 </div>
                 {expandedSections.goals ? (
@@ -706,38 +731,38 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
             </CardHeader>
             {expandedSections.goals && (
             <CardContent className="space-y-4">
-              {/* 目標 */}
+              {/* 基本方針・長期目標 */}
               <div>
-                <label className="block text-sm font-medium mb-2">目標（複数選択可）</label>
-                {formData.goals && formData.goals.length > 0 && (
-                  <div className="space-y-2 mb-3">
-                    {formData.goals.map((goal, index) => (
-                      <div key={index} className="flex items-center gap-2 p-2 bg-muted rounded">
-                        <span className="flex-1">{goal}</span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleRemoveGoal(index)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={newGoal}
-                    onChange={(e) => setNewGoal(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleAddGoal()}
-                    className="flex-1 px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-                    placeholder="目標を入力"
-                  />
-                  <Button onClick={handleAddGoal} size="sm">
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
+                <label className="block text-sm font-medium mb-2">基本方針・長期目標</label>
+                <p className="text-xs text-muted-foreground mb-2">
+                  複数の目標がある場合は、1行に1つずつ入力してください（改行区切り）
+                </p>
+                <textarea
+                  value={goalsText}
+                  onChange={(e) => handleGoalsChange(e.target.value)}
+                  className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                  rows={5}
+                  placeholder="例: ブランド認知度の向上
+例: 顧客との関係構築
+例: 新規顧客の獲得"
+                />
+              </div>
+
+              {/* 課題 */}
+              <div>
+                <label className="block text-sm font-medium mb-2">課題</label>
+                <p className="text-xs text-muted-foreground mb-2">
+                  複数の課題がある場合は、1行に1つずつ入力してください（改行区切り）
+                </p>
+                <textarea
+                  value={challengesText}
+                  onChange={(e) => handleChallengesChange(e.target.value)}
+                  className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                  rows={5}
+                  placeholder="例: SNS運用の時間が取れない
+例: コンテンツの方向性が定まらない
+例: エンゲージメントが低い"
+                />
               </div>
             </CardContent>
             )}

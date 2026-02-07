@@ -190,6 +190,9 @@ export interface BusinessInfo {
   
   // 現在の課題
   challenges: string[]
+  
+  // 基本方針・長期目標（onboardingページ用）
+  goals?: string[] // 基本方針・長期目標（配列）
 }
 
 export interface BillingInfo {
