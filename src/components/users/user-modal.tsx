@@ -104,9 +104,8 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
 
   const [newFocusMetric, setNewFocusMetric] = useState('')
   const [newTargetMarket, setNewTargetMarket] = useState('')
-  // 目標・課題は記述式（改行区切り）で管理
+  // 目標は記述式（改行区切り）で管理
   const [goalsText, setGoalsText] = useState('')
-  const [challengesText, setChallengesText] = useState('')
   const [editingProductIndex, setEditingProductIndex] = useState<number | null>(null)
   const [editingProduct, setEditingProduct] = useState<Partial<ProductOrService>>({ name: '', details: '', price: '' })
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
@@ -151,9 +150,8 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
         contractStartDate: user.contractStartDate.split('T')[0] + 'T00:00:00Z',
         contractEndDate: user.contractEndDate.split('T')[0] + 'T00:00:00Z'
       })
-      // 目標・課題をテキスト形式で初期化（改行区切り）
+      // 目標をテキスト形式で初期化（改行区切り）
       setGoalsText((user.businessInfo?.goals || user.goals || []).join('\n'))
-      setChallengesText((user.businessInfo?.challenges || []).join('\n'))
     } else {
       // 事前選択された企業IDを設定
       if (preselectedCompanyId) {
@@ -403,18 +401,6 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
     })
   }
 
-  // 課題テキストを配列に変換して保存
-  const handleChallengesChange = (text: string) => {
-    setChallengesText(text)
-    const challengesArray = text.split('\n').filter(line => line.trim() !== '')
-    setFormData({
-      ...formData,
-      businessInfo: {
-        ...formData.businessInfo!,
-        challenges: challengesArray
-      }
-    })
-  }
 
   const handleAddProduct = () => {
     if (!editingProduct.name?.trim()) return
@@ -485,9 +471,8 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
       return
     }
 
-    // 目標・課題テキストを配列に変換して保存
+    // 目標テキストを配列に変換して保存
     const goalsArray = goalsText.split('\n').filter(line => line.trim() !== '')
-    const challengesArray = challengesText.split('\n').filter(line => line.trim() !== '')
 
     // デバッグ用：送信データを確認
     console.log('Saving user data:', {
@@ -506,8 +491,8 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
       ...formData,
       businessInfo: {
         ...formData.businessInfo!,
-        goals: goalsArray,
-        challenges: challengesArray
+        goals: goalsArray
+        // challengesは月次計画ページで設定するため、ここでは空配列のまま
       },
       updatedAt: new Date().toISOString()
     })
@@ -717,9 +702,9 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-lg">基本方針・長期目標</CardTitle>
+                  <CardTitle className="text-lg">SNS活用の目的（Why SNS?）</CardTitle>
                   <CardDescription>
-                    この目標は、あなたのビジネスの根幹となる基本方針です。月ごとに変わる目標は、運用計画ページで設定できます。
+                    この目的は、あなたのビジネスがSNSで何を実現したいかを表す基本方針です。数ヶ月〜数年変わらない、ビジネスの根幹となる目的を設定してください。月ごとに変わる具体的な目標は、運用計画ページ（/instagram/plan）で設定できます。
                   </CardDescription>
                 </div>
                 {expandedSections.goals ? (
@@ -733,9 +718,11 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
             <CardContent className="space-y-4">
               {/* 基本方針・長期目標 */}
               <div>
-                <label className="block text-sm font-medium mb-2">基本方針・長期目標</label>
+                <label className="block text-sm font-medium mb-2">SNS活用の目的</label>
                 <p className="text-xs text-muted-foreground mb-2">
-                  複数の目標がある場合は、1行に1つずつ入力してください（改行区切り）
+                  複数の目的がある場合は、1行に1つずつ入力してください（改行区切り）
+                  <br />
+                  <span className="text-amber-600">※ 数ヶ月〜数年変わらない、ビジネスの根幹となる目的を設定してください</span>
                 </p>
                 <textarea
                   value={goalsText}
@@ -743,25 +730,11 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
                   className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
                   rows={5}
                   placeholder="例: ブランド認知度の向上
-例: 顧客との関係構築
-例: 新規顧客の獲得"
-                />
-              </div>
+例: 顧客との長期的な関係構築
+例: 業界での専門性・信頼性の確立
+例: 地域No.1の認知度獲得
 
-              {/* 課題 */}
-              <div>
-                <label className="block text-sm font-medium mb-2">課題</label>
-                <p className="text-xs text-muted-foreground mb-2">
-                  複数の課題がある場合は、1行に1つずつ入力してください（改行区切り）
-                </p>
-                <textarea
-                  value={challengesText}
-                  onChange={(e) => handleChallengesChange(e.target.value)}
-                  className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-                  rows={5}
-                  placeholder="例: SNS運用の時間が取れない
-例: コンテンツの方向性が定まらない
-例: エンゲージメントが低い"
+※ 月ごとに変わる具体的な目標（例: 「今月は新商品の認知度向上」）は運用計画ページで設定してください"
                 />
               </div>
             </CardContent>
