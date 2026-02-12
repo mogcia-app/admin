@@ -124,6 +124,27 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
     }))
   }
 
+  const createBaseSNSSetting = () => ({
+    enabled: true,
+    whyThisSNS: '',
+    snsGoal: '',
+    contentDirection: '',
+    postFrequency: '',
+    targetAction: '',
+    tone: '',
+    focusMetrics: [] as string[],
+    strategyNotes: ''
+  })
+
+  const createInstagramSNSSetting = () => ({
+    ...createBaseSNSSetting(),
+    manner: '',
+    cautions: '',
+    goals: '',
+    motivation: '',
+    additionalInfo: ''
+  })
+
   // ユーザー編集時の初期化
   useEffect(() => {
     if (user) {
@@ -280,29 +301,11 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
     const updatedSettings = { ...formData.snsAISettings }
     
     if (checked) {
-      const baseSetting = {
-        enabled: true,
-        whyThisSNS: '',
-        snsGoal: '',
-        contentDirection: '',
-        postFrequency: '',
-        targetAction: '',
-        tone: '',
-        focusMetrics: [],
-        strategyNotes: ''
-      }
       // Instagram専用フィールド
       if (sns === 'instagram') {
-        updatedSettings[sns as keyof SNSAISettings] = {
-          ...baseSetting,
-          manner: '',
-          cautions: '',
-          goals: '',
-          motivation: '',
-          additionalInfo: ''
-        }
+        updatedSettings[sns as keyof SNSAISettings] = createInstagramSNSSetting()
       } else {
-        updatedSettings[sns as keyof SNSAISettings] = baseSetting
+        updatedSettings[sns as keyof SNSAISettings] = createBaseSNSSetting()
       }
     } else {
       delete updatedSettings[sns as keyof SNSAISettings]
@@ -737,6 +740,37 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
 ※ 月ごとに変わる具体的な目標（例: 「今月は新商品の認知度向上」）は運用計画ページで設定してください"
                 />
               </div>
+
+              {(formData.contractSNS?.includes('instagram') || !!formData.snsAISettings?.instagram) && (
+                <div className="border border-amber-200 bg-amber-50/50 rounded-md p-4">
+                  <label className="block text-sm font-medium mb-2">Instagram 注意事項・NGワード</label>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    AI生成時に最優先で参照されるため、禁止事項や避けるべき表現を具体的に記載してください。
+                  </p>
+                  <textarea
+                    value={formData.snsAISettings?.instagram?.cautions || ''}
+                    onChange={(e) => handleSNSSettingChange(
+                      'instagram',
+                      'cautions',
+                      e.target.value
+                    )}
+                    onFocus={() => {
+                      if (!formData.snsAISettings?.instagram) {
+                        setFormData({
+                          ...formData,
+                          snsAISettings: {
+                            ...formData.snsAISettings,
+                            instagram: createInstagramSNSSetting()
+                          }
+                        })
+                      }
+                    }}
+                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                    rows={4}
+                    placeholder="例: 誇大表現NG / 医療効果の断定NG / 他社批判NG など"
+                  />
+                </div>
+              )}
             </CardContent>
             )}
           </Card>
