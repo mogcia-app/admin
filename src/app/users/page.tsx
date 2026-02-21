@@ -9,7 +9,7 @@ import { User } from '@/types'
 import { useUsers, useUserStats } from '@/hooks/useUsers'
 import { userService } from '@/lib/firebase-admin'
 import { useCompanies } from '@/hooks/useCompanies'
-import { getPlanName, getUserPlanTier } from '@/lib/plan-access'
+import { getPlanName, getUserPlanTier, normalizePlanTier } from '@/lib/plan-access'
 import { recordPlanHistory } from '@/lib/plan-history'
 import { useAuth } from '@/contexts/auth-context'
 
@@ -111,6 +111,14 @@ export default function UsersPage() {
     return labels[type as keyof typeof labels] || type
   }
 
+  const getPlanTierBadgeClass = (tier: string) => {
+    const normalizedTier = normalizePlanTier(tier)
+    if (normalizedTier === 'basic') return 'bg-pink-100 text-pink-700 border border-pink-200'
+    if (normalizedTier === 'standard') return 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+    if (normalizedTier === 'pro') return 'bg-blue-100 text-blue-700 border border-blue-200'
+    return 'bg-gray-100 text-gray-700 border border-gray-200'
+  }
+
   const handleCreateUser = async (userData: Partial<User>) => {
     try {
       // デバッグ用：受け取ったデータを確認
@@ -162,14 +170,14 @@ export default function UsersPage() {
     try {
       // プラン階層が変更された場合、履歴を記録
       if (userData.planTier && userData.planTier !== selectedUser.planTier) {
-        const fromPlan = (selectedUser.planTier || 'ume') as 'ume' | 'take' | 'matsu'
-        const toPlan = userData.planTier as 'ume' | 'take' | 'matsu'
+        const fromPlan = normalizePlanTier(selectedUser.planTier)
+        const toPlan = normalizePlanTier(userData.planTier)
         const changedBy = currentAdminUser?.uid || currentAdminUser?.email || 'admin'
         
         try {
           await recordPlanHistory(
             selectedUser.id,
-            fromPlan === 'ume' ? null : fromPlan, // デフォルト値から変更する場合はnull
+            fromPlan === 'basic' ? null : fromPlan, // デフォルト値から変更する場合はnull
             toPlan,
             changedBy,
             '管理者による手動変更'
@@ -349,12 +357,7 @@ export default function UsersPage() {
                   <div className="space-y-3">
                     {/* プラン階層 */}
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
-                        user.planTier === 'ume' ? 'bg-pink-100 text-pink-700 border border-pink-200' :
-                        user.planTier === 'take' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' :
-                        user.planTier === 'matsu' ? 'bg-purple-100 text-purple-700 border border-purple-200' :
-                        'bg-gray-100 text-gray-700 border border-gray-200'
-                      }`}>
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${getPlanTierBadgeClass(user.planTier || 'basic')}`}>
                         {getPlanName(getUserPlanTier(user))}
                       </span>
                       {!user.accessGranted && (
@@ -571,12 +574,7 @@ export default function UsersPage() {
                       </td>
                       <td className="px-5 py-4">
                         <div className="flex flex-col gap-1">
-                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap shadow-sm ${
-                            user.planTier === 'ume' ? 'bg-pink-100 text-pink-700 border border-pink-200' :
-                            user.planTier === 'take' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' :
-                            user.planTier === 'matsu' ? 'bg-purple-100 text-purple-700 border border-purple-200' :
-                            'bg-gray-100 text-gray-700 border border-gray-200'
-                          }`}>
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap shadow-sm ${getPlanTierBadgeClass(user.planTier || 'basic')}`}>
                             {getPlanName(getUserPlanTier(user))}
                           </span>
                           {!user.accessGranted && (

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { User, SNSAISettings, BusinessInfo, BillingInfo, Company, AIInitialSettings, ProductOrService } from '@/types'
 import { useCompanies } from '@/hooks/useCompanies'
-import { getPlanList, getPlanName, getUserPlanTier, planTierToBillingPlan } from '@/lib/plan-access'
+import { getPlanList, normalizePlanTier, planTierToBillingPlan } from '@/lib/plan-access'
 
 interface UserModalProps {
   isOpen: boolean
@@ -89,7 +89,7 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
       paymentStatus: 'paid',
       requiresStripeSetup: false
     },
-    planTier: 'ume', // デフォルトは梅プラン
+    planTier: 'basic', // デフォルトはベーシックプラン
     aiInitialSettings: {
       defaultTone: 'professional',
       defaultLanguage: 'ja',
@@ -149,11 +149,11 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
   useEffect(() => {
     if (user) {
       // planTierからbillingInfo.planを自動設定（既存ユーザーの場合）
-      const planTier = user.planTier || 'ume'
+      const planTier = normalizePlanTier(user.planTier)
       const billingPlan = planTierToBillingPlan(planTier)
       const billingInfo = user.billingInfo || {
         plan: billingPlan,
-        monthlyFee: planTier === 'ume' ? 15000 : planTier === 'take' ? 30000 : 60000,
+        monthlyFee: planTier === 'basic' ? 15000 : planTier === 'standard' ? 30000 : 60000,
         currency: 'JPY' as const,
         paymentMethod: 'credit_card' as const,
         nextBillingDate: '',
@@ -167,6 +167,7 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
       
       setFormData({
         ...user,
+        planTier,
         billingInfo,
         contractStartDate: user.contractStartDate.split('T')[0] + 'T00:00:00Z',
         contractEndDate: user.contractEndDate.split('T')[0] + 'T00:00:00Z'
@@ -222,7 +223,7 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
           paymentStatus: 'paid',
           requiresStripeSetup: true
         },
-        planTier: 'ume', // デフォルトはライトプラン（後方互換性のためumeを保持）
+        planTier: 'basic', // デフォルトはベーシックプラン
         aiInitialSettings: {
           defaultTone: 'professional',
           defaultLanguage: 'ja',
@@ -590,9 +591,9 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
                     プラン階層 <span className="text-red-500">*</span>
                   </label>
                   <select
-                    value={formData.planTier || 'ume'}
+                    value={normalizePlanTier(formData.planTier)}
                     onChange={(e) => {
-                      const selectedTier = e.target.value as 'ume' | 'take' | 'matsu'
+                      const selectedTier = e.target.value as 'basic' | 'standard' | 'pro'
                       const billingPlan = planTierToBillingPlan(selectedTier)
                       setFormData({ 
                         ...formData, 
@@ -600,7 +601,7 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
                         billingInfo: {
                           ...formData.billingInfo!,
                           plan: billingPlan,
-                          monthlyFee: selectedTier === 'ume' ? 15000 : selectedTier === 'take' ? 30000 : 60000
+                          monthlyFee: selectedTier === 'basic' ? 15000 : selectedTier === 'standard' ? 30000 : 60000
                         }
                       })
                     }}

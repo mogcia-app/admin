@@ -25,7 +25,7 @@ interface NotificationsPageExampleProps {
 export default function NotificationsPageExample({ userProfile }: NotificationsPageExampleProps) {
   // プラン階層に基づいて対象オーディエンスを決定
   const planTier = getUserPlanTier(userProfile)
-  const targetAudience = planTier === 'ume' ? 'trial' : 'paid'
+  const targetAudience = planTier === 'basic' ? 'trial' : 'paid'
   
   const { notifications, loading, error } = usePublishedNotifications(targetAudience)
   const [selectedNotification, setSelectedNotification] = useState<string | null>(null)

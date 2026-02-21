@@ -1,11 +1,13 @@
 import { User } from '@/types'
 
-export type PlanTier = 'ume' | 'take' | 'matsu'
+export type ActivePlanTier = 'basic' | 'standard' | 'pro'
+export type LegacyPlanTier = 'ume' | 'take' | 'matsu'
+export type PlanTier = ActivePlanTier | LegacyPlanTier
 
 // プラン階層の定義
 export const PLAN_CONFIG = {
-  ume: {
-    name: 'ライトプラン',
+  basic: {
+    name: 'ベーシックプラン',
     monthlyFee: 15000,
     features: {
       canAccessLab: true,
@@ -17,7 +19,7 @@ export const PLAN_CONFIG = {
       canAccessLearning: false,
     },
   },
-  take: {
+  standard: {
     name: 'スタンダードプラン',
     monthlyFee: 30000,
     features: {
@@ -30,7 +32,7 @@ export const PLAN_CONFIG = {
       canAccessLearning: false,
     },
   },
-  matsu: {
+  pro: {
     name: 'プロプラン',
     monthlyFee: 60000,
     features: {
@@ -46,16 +48,36 @@ export const PLAN_CONFIG = {
 } as const
 
 export const PLAN_FEATURES = {
-  ume: PLAN_CONFIG.ume.features,
-  take: PLAN_CONFIG.take.features,
-  matsu: PLAN_CONFIG.matsu.features,
+  basic: PLAN_CONFIG.basic.features,
+  standard: PLAN_CONFIG.standard.features,
+  pro: PLAN_CONFIG.pro.features,
 } as const
 
 /**
- * ユーザーのプラン階層を取得（デフォルトは"ume"）
+ * 旧プラン値を新プラン値に正規化
  */
-export function getUserPlanTier(user: User | null | undefined): PlanTier {
-  return user?.planTier || 'ume'
+export function normalizePlanTier(tier: string | null | undefined): ActivePlanTier {
+  switch (tier) {
+    case 'basic':
+    case 'standard':
+    case 'pro':
+      return tier
+    case 'ume':
+      return 'basic'
+    case 'take':
+      return 'standard'
+    case 'matsu':
+      return 'pro'
+    default:
+      return 'basic'
+  }
+}
+
+/**
+ * ユーザーのプラン階層を取得（デフォルトは"basic"）
+ */
+export function getUserPlanTier(user: User | null | undefined): ActivePlanTier {
+  return normalizePlanTier(user?.planTier)
 }
 
 /**
@@ -63,7 +85,7 @@ export function getUserPlanTier(user: User | null | undefined): PlanTier {
  */
 export function canAccessFeature(
   user: User | null | undefined,
-  feature: keyof typeof PLAN_FEATURES.ume
+  feature: keyof typeof PLAN_FEATURES.basic
 ): boolean {
   const tier = getUserPlanTier(user)
   return PLAN_FEATURES[tier][feature]
@@ -80,14 +102,14 @@ export function getAccessDeniedMessage(feature: string): string {
  * プランの表示名を取得
  */
 export function getPlanName(tier: PlanTier): string {
-  return PLAN_CONFIG[tier].name
+  return PLAN_CONFIG[normalizePlanTier(tier)].name
 }
 
 /**
  * プランの月額料金を取得
  */
 export function getPlanPrice(tier: PlanTier): number {
-  return PLAN_CONFIG[tier].monthlyFee
+  return PLAN_CONFIG[normalizePlanTier(tier)].monthlyFee
 }
 
 /**
@@ -103,9 +125,9 @@ export function getPlanAccess(user: User | null | undefined) {
  */
 export function getPlanList(): Array<{ value: PlanTier; label: string; price: number }> {
   return [
-    { value: 'ume', label: PLAN_CONFIG.ume.name, price: PLAN_CONFIG.ume.monthlyFee },
-    { value: 'take', label: PLAN_CONFIG.take.name, price: PLAN_CONFIG.take.monthlyFee },
-    { value: 'matsu', label: PLAN_CONFIG.matsu.name, price: PLAN_CONFIG.matsu.monthlyFee },
+    { value: 'basic', label: PLAN_CONFIG.basic.name, price: PLAN_CONFIG.basic.monthlyFee },
+    { value: 'standard', label: PLAN_CONFIG.standard.name, price: PLAN_CONFIG.standard.monthlyFee },
+    { value: 'pro', label: PLAN_CONFIG.pro.name, price: PLAN_CONFIG.pro.monthlyFee },
   ]
 }
 
@@ -114,6 +136,9 @@ export function getPlanList(): Array<{ value: PlanTier; label: string; price: nu
  */
 export function planTierToBillingPlan(tier: PlanTier): 'light' | 'standard' | 'professional' {
   const mapping = {
+    'basic': 'light' as const,
+    'standard': 'standard' as const,
+    'pro': 'professional' as const,
     'ume': 'light' as const,
     'take': 'standard' as const,
     'matsu': 'professional' as const,
@@ -124,14 +149,13 @@ export function planTierToBillingPlan(tier: PlanTier): 'light' | 'standard' | 'p
 /**
  * billingInfo.planをplanTierに変換
  */
-export function billingPlanToPlanTier(plan: 'light' | 'standard' | 'professional'): PlanTier {
+export function billingPlanToPlanTier(plan: 'light' | 'standard' | 'professional'): ActivePlanTier {
   const mapping = {
-    'light': 'ume' as const,
-    'standard': 'take' as const,
-    'professional': 'matsu' as const,
+    'light': 'basic' as const,
+    'standard': 'standard' as const,
+    'professional': 'pro' as const,
   }
   return mapping[plan]
 }
-
 
 

@@ -7,8 +7,8 @@ import { collection, addDoc, query, where, orderBy, getDocs } from 'firebase/fir
  */
 export async function recordPlanHistory(
   userId: string,
-  from: 'ume' | 'take' | 'matsu' | null,
-  to: 'ume' | 'take' | 'matsu',
+  from: 'basic' | 'standard' | 'pro' | 'ume' | 'take' | 'matsu' | null,
+  to: 'basic' | 'standard' | 'pro' | 'ume' | 'take' | 'matsu',
   changedBy: string,
   reason?: string
 ): Promise<string> {

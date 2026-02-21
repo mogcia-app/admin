@@ -26,7 +26,7 @@ export interface User {
   // 企業管理（B2B向け）
   companyId?: string // 所属企業ID（企業向け販売の場合）
   // プラン階層（会員サイト向け）
-  planTier?: 'ume' | 'take' | 'matsu' // 梅・竹・松プラン
+  planTier?: 'basic' | 'standard' | 'pro' // 旧値(ume/take/matsu)は読み取り時に正規化
   // AI初期設定
   aiInitialSettings?: AIInitialSettings
   // Signal.ツール連携
@@ -674,8 +674,8 @@ export interface AIPlatformSettings {
 export interface PlanHistory {
   id: string
   userId: string
-  from: 'ume' | 'take' | 'matsu' | null
-  to: 'ume' | 'take' | 'matsu'
+  from: 'basic' | 'standard' | 'pro' | 'ume' | 'take' | 'matsu' | null
+  to: 'basic' | 'standard' | 'pro' | 'ume' | 'take' | 'matsu'
   changedBy: string // AdminユーザーID
   reason?: string // 変更理由
   changedAt: string
