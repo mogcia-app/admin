@@ -1,9 +1,8 @@
 // Firebase Admin SDK for server-side operations
 import { collection, getDocs, getDoc, addDoc, updateDoc, deleteDoc, doc, query, where, orderBy, setDoc } from 'firebase/firestore'
-import { createUserWithEmailAndPassword, deleteUser as deleteAuthUser } from 'firebase/auth'
+import { createUserWithEmailAndPassword } from 'firebase/auth'
 import { db, auth } from './firebase'
 import { User } from '@/types'
-import { planTierToBillingPlan } from './plan-access'
 import { v4 as uuidv4 } from 'uuid'
 
 // User management functions
@@ -71,12 +70,9 @@ export const userService = {
       // 2. サポートIDを生成（UUID v4）
       const supportId = uuidv4()
       
-      // 3. Signal.ツールへのアクセスURLを生成
-      const signalToolBaseUrl = process.env.NEXT_PUBLIC_SIGNAL_TOOL_BASE_URL || 'https://signaltool.app'
-      const signalToolAccessUrl = `${signalToolBaseUrl}/auth/callback?userId=${uid}`
-      
-      // 4. Firestoreにユーザー詳細情報を保存（パスワードは除く）
-      const { password, ...userDataWithoutPassword } = userData
+      // 3. Firestoreにユーザー詳細情報を保存（パスワードは除く）
+      const userDataWithoutPassword = { ...userData }
+      delete userDataWithoutPassword.password
       const userRef = doc(db, 'users', uid)
       
       await setDoc(userRef, {
@@ -101,7 +97,7 @@ export const userService = {
         status: userData.status || 'active',
         contractStartDate: userData.contractStartDate || new Date().toISOString(),
         contractEndDate: userData.contractEndDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-        signalToolAccessUrl, // Signal.ツールへのアクセスURL
+        // 招待リンクは短命・ワンタイムで都度生成するため恒久URLは保存しない
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       })

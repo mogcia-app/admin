@@ -4,6 +4,7 @@ import React from 'react'
 import { useAuth } from '@/contexts/auth-context'
 import { LoginForm } from './login-form'
 import { Loader2 } from 'lucide-react'
+import { usePathname } from 'next/navigation'
 
 interface AuthGuardProps {
   children: React.ReactNode
@@ -11,6 +12,12 @@ interface AuthGuardProps {
 
 export function AuthGuard({ children }: AuthGuardProps) {
   const { user, adminUser, loading } = useAuth()
+  const pathname = usePathname()
+  const isPublicIntake = pathname?.startsWith('/intake/')
+
+  if (isPublicIntake) {
+    return <>{children}</>
+  }
 
   // ローディング中
   if (loading) {

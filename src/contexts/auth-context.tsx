@@ -13,6 +13,23 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
+const AUTH_AUDIT_SESSION_KEY = 'admin_auth_audit_logged_uid'
+
+async function recordAuthAudit(firebaseUser: User, action: 'auth.login' | 'auth.logout') {
+  try {
+    const idToken = await firebaseUser.getIdToken()
+    await fetch('/api/auth/audit-session', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${idToken}`,
+      },
+      body: JSON.stringify({ action }),
+    })
+  } catch (error) {
+    console.error('Failed to record auth audit:', error)
+  }
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
@@ -24,6 +41,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(firebaseUser)
       
       if (firebaseUser) {
+        if (typeof window !== 'undefined') {
+          const loggedUid = window.sessionStorage.getItem(AUTH_AUDIT_SESSION_KEY)
+          if (loggedUid !== firebaseUser.uid) {
+            await recordAuthAudit(firebaseUser, 'auth.login')
+            window.sessionStorage.setItem(AUTH_AUDIT_SESSION_KEY, firebaseUser.uid)
+          }
+        }
+
         // Firebase ユーザーから管理者情報を取得
         const admin = getAdminUser(firebaseUser.email || '')
         setAdminUser(admin)
@@ -89,6 +114,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } else {
         setAdminUser(null)
+        if (typeof window !== 'undefined') {
+          window.sessionStorage.removeItem(AUTH_AUDIT_SESSION_KEY)
+        }
       }
       
       setLoading(false)
@@ -99,7 +127,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
+      if (user) {
+        await recordAuthAudit(user, 'auth.logout')
+      }
       await signOut(auth)
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.removeItem(AUTH_AUDIT_SESSION_KEY)
+      }
     } catch (error) {
       console.error('Logout error:', error)
     }

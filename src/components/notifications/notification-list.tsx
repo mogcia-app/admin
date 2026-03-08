@@ -115,15 +115,15 @@ export function NotificationList({
     return (
       <div className="space-y-4">
         {Array.from({ length: 3 }).map((_, i) => (
-          <Card key={i} className="animate-pulse">
+          <Card key={i} className="animate-pulse rounded-none border-slate-200 shadow-sm">
             <CardHeader>
-              <div className="h-4 bg-muted rounded w-3/4"></div>
-              <div className="h-3 bg-muted rounded w-1/2"></div>
+              <div className="h-4 bg-muted rounded-none w-3/4"></div>
+              <div className="h-3 bg-muted rounded-none w-1/2"></div>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                <div className="h-3 bg-muted rounded"></div>
-                <div className="h-3 bg-muted rounded w-5/6"></div>
+                <div className="h-3 bg-muted rounded-none"></div>
+                <div className="h-3 bg-muted rounded-none w-5/6"></div>
               </div>
             </CardContent>
           </Card>
@@ -148,7 +148,7 @@ export function NotificationList({
         const expired = isExpired(notification)
         
         return (
-          <Card key={notification.id} className={`hover:shadow-md transition-shadow ${
+          <Card key={notification.id} className={`rounded-none border-slate-200 shadow-sm hover:shadow-md transition-shadow ${
             expired ? 'opacity-75 border-gray-300' : ''
           }`}>
             <CardHeader>
@@ -159,21 +159,21 @@ export function NotificationList({
                     <CardTitle className="text-lg">{notification.title}</CardTitle>
                     
                     {notification.isSticky && (
-                      <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
+                      <Badge variant="outline" className="rounded-none bg-yellow-50 text-yellow-700 border-yellow-200">
                         <Pin className="h-3 w-3 mr-1" />
                         固定
                       </Badge>
                     )}
                     
-                    <Badge className={getStatusColor(notification.status)}>
+                    <Badge className={`rounded-none ${getStatusColor(notification.status)}`}>
                       {getStatusLabel(notification.status)}
                     </Badge>
                     
-                    <Badge variant="outline" className={getTypeColor(notification.type)}>
+                    <Badge variant="outline" className={`rounded-none ${getTypeColor(notification.type)}`}>
                       {notification.type}
                     </Badge>
                     
-                    <Badge variant="outline" className={getPriorityColor(notification.priority)}>
+                    <Badge variant="outline" className={`rounded-none ${getPriorityColor(notification.priority)}`}>
                       {notification.priority === 'urgent' ? '🚨 緊急' :
                        notification.priority === 'high' ? '🔥 高' :
                        notification.priority === 'medium' ? '📋 中' :
@@ -181,7 +181,7 @@ export function NotificationList({
                     </Badge>
                     
                     {expired && (
-                      <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+                      <Badge variant="outline" className="rounded-none bg-red-50 text-red-700 border-red-200">
                         期限切れ
                       </Badge>
                     )}
@@ -214,7 +214,7 @@ export function NotificationList({
                     {notification.tags?.map((tag) => (
                       <span
                         key={tag}
-                        className="px-2 py-1 bg-muted text-muted-foreground text-xs rounded flex items-center gap-1"
+                        className="px-2 py-1 bg-muted text-muted-foreground text-xs rounded-none flex items-center gap-1"
                       >
                         <Tag className="h-3 w-3" />
                         #{tag}

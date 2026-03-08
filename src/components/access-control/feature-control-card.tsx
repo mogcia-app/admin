@@ -10,7 +10,6 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { AppAccessControl } from '@/types'
 import { 
-  Settings, 
   Users, 
   AlertTriangle, 
   CheckCircle, 
@@ -99,7 +98,7 @@ export function FeatureControlCard({
   }
 
   return (
-    <Card className={`hover:shadow-md transition-shadow ${
+    <Card className={`rounded-none border-slate-200 shadow-sm hover:shadow-md transition-shadow ${
       accessControl.maintenanceMode ? 'border-orange-200 bg-orange-50/50' : 
       !accessControl.isEnabled ? 'border-red-200 bg-red-50/50' : 
       'border-green-200 bg-green-50/50'
@@ -113,17 +112,17 @@ export function FeatureControlCard({
               
               {/* ステータスバッジ */}
               {accessControl.maintenanceMode ? (
-                <Badge variant="outline" className="bg-orange-100 text-orange-800 border-orange-200">
+                <Badge variant="outline" className="rounded-none bg-orange-100 text-orange-800 border-orange-200">
                   <Wrench className="h-3 w-3 mr-1" />
                   メンテナンス中
                 </Badge>
               ) : accessControl.isEnabled ? (
-                <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
+                <Badge variant="outline" className="rounded-none bg-green-100 text-green-800 border-green-200">
                   <CheckCircle className="h-3 w-3 mr-1" />
                   有効
                 </Badge>
               ) : (
-                <Badge variant="outline" className="bg-red-100 text-red-800 border-red-200">
+                <Badge variant="outline" className="rounded-none bg-red-100 text-red-800 border-red-200">
                   <XCircle className="h-3 w-3 mr-1" />
                   無効
                 </Badge>
@@ -162,7 +161,7 @@ export function FeatureControlCard({
             <div className="flex flex-wrap gap-1">
               <Users className="h-4 w-4 text-muted-foreground" />
               {accessControl.allowedRoles.map((role) => (
-                <Badge key={role} variant="outline" className={getRoleColor(role)}>
+                <Badge key={role} variant="outline" className={`rounded-none ${getRoleColor(role)}`}>
                   {getRoleLabel(role)}
                 </Badge>
               ))}
@@ -191,7 +190,7 @@ export function FeatureControlCard({
       <CardContent className="space-y-4">
         {/* メンテナンスメッセージ */}
         {accessControl.maintenanceMode && accessControl.maintenanceMessage && !isEditing && (
-          <div className="p-3 bg-orange-100 border border-orange-200 rounded-md">
+          <div className="p-3 bg-orange-100 border border-orange-200 rounded-none">
             <div className="flex items-start gap-2">
               <AlertTriangle className="h-4 w-4 text-orange-600 mt-0.5" />
               <p className="text-sm text-orange-800">{accessControl.maintenanceMessage}</p>

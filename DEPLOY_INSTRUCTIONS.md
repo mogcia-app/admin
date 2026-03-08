@@ -72,3 +72,5 @@ firebase deploy --only firestore:rules
 - ルールの反映には数秒〜数分かかることがあります
 - デプロイ後は必ず動作確認を行ってください
 
+
+

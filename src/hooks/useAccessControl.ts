@@ -9,6 +9,7 @@ import {
 } from '@/types'
 import { 
   getAccessControlSettings, 
+  initializeDefaultAccessControls,
   getAccessControlByFeature,
   createAccessControl, 
   updateAccessControl, 
@@ -33,7 +34,11 @@ export function useAccessControl() {
     try {
       setLoading(true)
       setError(null)
-      const data = await getAccessControlSettings()
+      let data = await getAccessControlSettings()
+      if (data.length === 0) {
+        await initializeDefaultAccessControls(adminUser?.id || adminUser?.email || 'system:init')
+        data = await getAccessControlSettings()
+      }
       setAccessControls(data)
     } catch (err) {
       console.error('Error fetching access controls:', err)
@@ -45,7 +50,8 @@ export function useAccessControl() {
 
   useEffect(() => {
     fetchAccessControls()
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminUser?.id, adminUser?.email])
 
   const addAccessControl = async (controlData: Omit<AppAccessControl, 'id' | 'updatedAt'>) => {
     try {
@@ -142,6 +148,19 @@ export function useAccessControl() {
           updatedAt: new Date().toISOString()
         }
         setAccessControls(updatedControls)
+      } else {
+        const newControl: AppAccessControl = {
+          id: `temp_${Date.now()}`,
+          feature,
+          isEnabled: !maintenanceMode,
+          description: `${feature}のメンテナンス制御`,
+          allowedRoles: ['admin'],
+          maintenanceMode,
+          maintenanceMessage,
+          updatedBy: adminUser?.id || 'unknown',
+          updatedAt: new Date().toISOString()
+        }
+        setAccessControls([...accessControls, newControl])
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'メンテナンスモードの切り替えに失敗しました'

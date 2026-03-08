@@ -26,6 +26,41 @@ service cloud.firestore {
       );
     }
 
+    // 現在ユーザーの users ドキュメント
+    function currentUserDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    // users ドキュメント存在確認
+    function hasCurrentUserDoc() {
+      return isAuthenticated() &&
+             currentUserDoc() != null &&
+             currentUserDoc().data != null;
+    }
+
+    // 親管理（運営本部）判定
+    // 既存のメールベース admin に加え、role=hq_admin も許可
+    function isHQAdmin() {
+      return isAdminEmail() ||
+             (hasCurrentUserDoc() &&
+              (currentUserDoc().data.role == 'hq_admin' ||
+               currentUserDoc().data.role == 'admin'));
+    }
+
+    // 子管理（代理店管理者）判定
+    function isAgencyAdmin() {
+      return hasCurrentUserDoc() &&
+             currentUserDoc().data.role == 'agency_admin' &&
+             currentUserDoc().data.agencyId != null;
+    }
+
+    // 同一 agency 判定
+    function isSameAgency(agencyId) {
+      return isAgencyAdmin() &&
+             agencyId != null &&
+             currentUserDoc().data.agencyId == agencyId;
+    }
+
     // 契約期間チェック関数（本人のみ）
     function isContractActive() {
       // ユーザーデータから契約期間を確認
@@ -38,11 +73,6 @@ service cloud.firestore {
              userDoc.data.status == 'active' && 
              userDoc.data.contractEndDate != null && 
              userDoc.data.contractEndDate > request.time;
-    }
-
-    // 契約期間チェック関数（adminまたは契約中）
-    function isContractActiveOrAdmin() {
-      return isAdminEmail() || isContractActive();
     }
 
     // ============================================
@@ -71,7 +101,7 @@ service cloud.firestore {
                          request.resource.data.title == resource.data.title &&
                          request.resource.data.content == resource.data.content &&
                          // readCountが増加しているか、または変更されていない
-                         (!resource.data.exists('readCount') || 
+                         (!('readCount' in resource.data) || 
                           request.resource.data.readCount >= resource.data.readCount);
     }
 
@@ -151,16 +181,23 @@ service cloud.firestore {
 
     // ユーザー自身のデータ更新
     match /users/{userId} {
-      // 管理者は最優先で全権限あり
-      allow read, write: if isAuthenticated() && isAdminEmail();
+      // 親管理者は最優先で全権限あり
+      allow read, write: if isAuthenticated() && isHQAdmin();
       
       // 本人の read
       allow get: if isAuthenticated() && request.auth.uid == userId;
       allow list: if isAuthenticated() && request.auth.uid == userId;
+
+      // 代理店管理者は自社ユーザーのみ閲覧可
+      allow read: if isSameAgency(resource.data.agencyId);
       
       // 本人の write（契約中のみ）
       // create: 新規作成時（認証済みユーザーのみ）
-      allow create: if isAuthenticated() && request.auth.uid == userId;
+      allow create: if (isAuthenticated() && request.auth.uid == userId) ||
+                       // 代理店管理者は自社ユーザーを作成可（親管理ロール作成は不可）
+                       (isAgencyAdmin() &&
+                        request.resource.data.agencyId == currentUserDoc().data.agencyId &&
+                        request.resource.data.role != 'hq_admin');
       
       // update: 更新時（契約中のみ、重要なフィールドは変更不可）
       allow update: if isAuthenticated() &&
@@ -170,8 +207,13 @@ service cloud.firestore {
                          request.resource.data.id == resource.data.id &&
                          request.resource.data.email == resource.data.email &&
                          request.resource.data.createdAt == resource.data.createdAt &&
-                         (!resource.data.exists('userType') || 
-                          request.resource.data.userType == resource.data.userType);
+                         (!('userType' in resource.data) || 
+                          request.resource.data.userType == resource.data.userType) ||
+                    // 代理店管理者は自社ユーザーのみ更新可（agency越境不可）
+                    (isAgencyAdmin() &&
+                     isSameAgency(resource.data.agencyId) &&
+                     request.resource.data.agencyId == resource.data.agencyId &&
+                     request.resource.data.role != 'hq_admin');
       
       // 同意ログサブコレクション（法的証拠として保存）
       match /contractConsents/{consentId} {
@@ -226,55 +268,80 @@ service cloud.firestore {
     // Admin Panel側のルール
     // ============================================
 
+    // 代理店コレクション
+    match /agencies/{agencyId} {
+      // 親管理は全権限
+      allow read, write: if isAuthenticated() && isHQAdmin();
+      // 代理店管理者は自社の代理店情報のみ参照可
+      allow get, list: if isSameAgency(agencyId);
+    }
+
+    // 監査ログ（追記専用）
+    match /auditLogs/{logId} {
+      // 親管理は全件閲覧可
+      allow get, list: if isAuthenticated() && isHQAdmin();
+      // 代理店管理者は自社ログのみ閲覧可
+      allow get, list: if isSameAgency(resource.data.agencyId);
+
+      // 作成は親管理、または代理店管理者（自社ログのみ）
+      allow create: if (isAuthenticated() && isHQAdmin()) ||
+                       (isAgencyAdmin() &&
+                        request.resource.data.agencyId == currentUserDoc().data.agencyId &&
+                        request.resource.data.tenantType == 'agency');
+
+      // 監査保全: 更新・削除禁止
+      allow update, delete: if false;
+    }
+
     // 企業コレクション - 管理者専用
     match /companies/{companyId} {
       // 管理者のみ読み書き可能（getとlistの両方）
-      allow get, list, write: if isAuthenticated() && isAdminEmail();
+      allow get, list, write: if isAuthenticated() && isHQAdmin();
     }
 
     // エラーログ、KPI、プロンプトなど、管理者専用コレクション
     match /errorLogs/{document=**} {
-      allow read, write: if isAuthenticated() && isAdminEmail();
+      allow read, write: if isAuthenticated() && isHQAdmin();
     }
 
     match /kpiMetrics/{document=**} {
-      allow read, write: if isAuthenticated() && isAdminEmail();
+      allow read, write: if isAuthenticated() && isHQAdmin();
     }
 
     match /revenueData/{document=**} {
-      allow read, write: if isAuthenticated() && isAdminEmail();
+      allow read, write: if isAuthenticated() && isHQAdmin();
     }
 
     match /userAcquisition/{document=**} {
-      allow read, write: if isAuthenticated() && isAdminEmail();
+      allow read, write: if isAuthenticated() && isHQAdmin();
     }
 
     match /engagementMetrics/{document=**} {
-      allow read, write: if isAuthenticated() && isAdminEmail();
+      allow read, write: if isAuthenticated() && isHQAdmin();
     }
 
     match /retentionMetrics/{document=**} {
-      allow read, write: if isAuthenticated() && isAdminEmail();
+      allow read, write: if isAuthenticated() && isHQAdmin();
     }
 
     match /conversionFunnels/{document=**} {
-      allow read, write: if isAuthenticated() && isAdminEmail();
+      allow read, write: if isAuthenticated() && isHQAdmin();
     }
 
     match /prompts/{document=**} {
-      allow read, write: if isAuthenticated() && isAdminEmail();
+      allow read, write: if isAuthenticated() && isHQAdmin();
     }
 
     match /salesProgress/{document=**} {
-      allow read, write: if isAuthenticated() && isAdminEmail();
+      allow read, write: if isAuthenticated() && isHQAdmin();
     }
 
     match /deals/{document=**} {
-      allow read, write: if isAuthenticated() && isAdminEmail();
+      allow read, write: if isAuthenticated() && isHQAdmin();
     }
 
     match /aiChats/{document=**} {
-      allow read, write: if isAuthenticated() && isAdminEmail();
+      allow read, write: if isAuthenticated() && isHQAdmin();
     }
 
     // ============================================
@@ -285,7 +352,7 @@ service cloud.firestore {
     // 注意: このルールは上記の特定ルールにマッチしない場合のみ適用される
     match /{document=**} {
       // 管理者のみ読み書き可能
-      allow read, write: if isAuthenticated() && isAdminEmail();
+      allow read, write: if isAuthenticated() && isHQAdmin();
     }
   }
 }

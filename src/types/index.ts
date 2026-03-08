@@ -2,7 +2,10 @@ export interface User {
   id: string // Firebase Auth UID
   name: string
   email: string
-  role: 'admin' | 'user' | 'moderator'
+  role: 'admin' | 'super_admin' | 'billing_admin' | 'user' | 'moderator' | 'hq_admin' | 'agency_admin'
+  // マルチテナント: 代理店所属ユーザーは agencyId を保持
+  // 親管理（hq_admin）配下ユーザーや移行前データは未設定を許容
+  agencyId?: string
   createdAt: string
   updatedAt: string
   isActive: boolean
@@ -31,12 +34,66 @@ export interface User {
   aiInitialSettings?: AIInitialSettings
   // Signal.ツール連携
   signalToolAccessUrl?: string // Signal.ツールへのアクセスURL（ユーザー作成時に生成）
+  signalInviteExpiresAt?: string // 招待リンク有効期限
+  onboardingInitialPassword?: string // 初回案内用に発行したランダムパスワード
+  onboardingIntakeToken?: string // 元になった intake トークン
   // 支払い確認・アクセス制御（会員サイト側の登録フロー用）
   initialPaymentConfirmed?: boolean // 初期費用確認済み
   firstMonthPaymentConfirmed?: boolean // 初月分確認済み
   accessGranted?: boolean // 会員サイトアクセス許可（支払い確認後に管理者が許可）
   // サポートID（UUID v4）
   supportId?: string // サポート効率化とセキュリティ向上のためのランダムID
+}
+
+// 代理店（営業代理店）管理
+export interface Agency {
+  id: string
+  name: string
+  code: string // 一意の識別子（例: AG001）
+  status: 'active' | 'inactive' | 'suspended'
+  contactName?: string
+  contactEmail?: string
+  contactPhone?: string
+  note?: string
+  createdAt: string
+  updatedAt: string
+  createdBy: string // uid or email
+}
+
+// 監査ログ（親管理で全代理店の操作監視に利用）
+export interface AuditLog {
+  id: string
+  tenantType: 'hq' | 'agency'
+  agencyId?: string // tenantType=agency の場合に必須
+  action:
+    | 'agency.create'
+    | 'agency.update'
+    | 'agency.delete'
+    | 'agency.suspend'
+    | 'agency.activate'
+    | 'user.create'
+    | 'user.update'
+    | 'user.suspend'
+    | 'user.activate'
+    | 'user.delete'
+    | 'role.change'
+    | 'auth.login'
+    | 'auth.logout'
+    | 'admin.planTier.update'
+    | 'admin.aiUsage.reset'
+  actor: {
+    uid: string
+    email?: string
+    role: User['role']
+  }
+  target?: {
+    type: 'agency' | 'user' | 'system'
+    id?: string
+    name?: string
+  }
+  changes?: Record<string, unknown> // 更新差分
+  metadata?: Record<string, unknown> // IP, UA, requestId など
+  createdAt: string
 }
 
 export interface AdminLayoutProps {

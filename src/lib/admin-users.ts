@@ -3,7 +3,7 @@ export interface AdminUser {
   id: string
   email: string
   name: string
-  role: 'super_admin' | 'admin'
+  role: 'super_admin' | 'billing_admin' | 'admin'
   createdAt: string
 }
 
@@ -20,7 +20,7 @@ export const ADMIN_USERS: AdminUser[] = [
     id: 'admin_002', 
     email: 'hiroto.domoto@signalapp.jp',
     name: '堂本寛人',
-    role: 'admin',
+    role: 'billing_admin',
     createdAt: '2024-01-01T00:00:00Z'
   },
   {

@@ -31,6 +31,57 @@ const COLLECTIONS = {
   SECURITY_PRESETS: 'securityPresets'
 }
 
+const DEFAULT_ACCESS_CONTROLS: Array<Omit<AppAccessControl, 'id' | 'updatedAt'>> = [
+  {
+    feature: 'ai_assistant',
+    isEnabled: true,
+    description: 'AIアシスタント機能の利用可否を制御',
+    allowedRoles: ['admin', 'user', 'trial'],
+    maintenanceMode: false,
+    updatedBy: 'system:init',
+  },
+  {
+    feature: 'prompt_management',
+    isEnabled: true,
+    description: 'プロンプト管理機能の利用可否を制御',
+    allowedRoles: ['admin', 'user'],
+    maintenanceMode: false,
+    updatedBy: 'system:init',
+  },
+  {
+    feature: 'user_profiles',
+    isEnabled: true,
+    description: 'ユーザープロフィール機能の利用可否を制御',
+    allowedRoles: ['admin', 'user', 'trial'],
+    maintenanceMode: false,
+    updatedBy: 'system:init',
+  },
+  {
+    feature: 'sns_integration',
+    isEnabled: true,
+    description: 'SNS連携機能の利用可否を制御',
+    allowedRoles: ['admin', 'user'],
+    maintenanceMode: false,
+    updatedBy: 'system:init',
+  },
+  {
+    feature: 'advanced_analytics',
+    isEnabled: true,
+    description: '高度な分析機能の利用可否を制御',
+    allowedRoles: ['admin', 'user'],
+    maintenanceMode: false,
+    updatedBy: 'system:init',
+  },
+  {
+    feature: 'api_access',
+    isEnabled: true,
+    description: 'APIアクセス機能の利用可否を制御',
+    allowedRoles: ['admin'],
+    maintenanceMode: false,
+    updatedBy: 'system:init',
+  },
+]
+
 // アクセス制御設定の取得
 export async function getAccessControlSettings(): Promise<AppAccessControl[]> {
   try {
@@ -47,6 +98,23 @@ export async function getAccessControlSettings(): Promise<AppAccessControl[]> {
     })) as AppAccessControl[]
   } catch (error) {
     console.error('Error fetching access control settings:', error)
+    throw error
+  }
+}
+
+export async function initializeDefaultAccessControls(updatedBy = 'system:init'): Promise<void> {
+  try {
+    const existing = await getAccessControlSettings()
+    if (existing.length > 0) return
+
+    for (const item of DEFAULT_ACCESS_CONTROLS) {
+      await createAccessControl({
+        ...item,
+        updatedBy,
+      })
+    }
+  } catch (error) {
+    console.error('Error initializing default access controls:', error)
     throw error
   }
 }

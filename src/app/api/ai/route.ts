@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
+import { assertFeatureEnabled, FeatureDisabledError } from '@/lib/server/feature-flags'
 
 // サーバーサイドでのAPIキー管理
 const openai = new OpenAI({
@@ -8,6 +9,7 @@ const openai = new OpenAI({
 
 export async function POST(request: NextRequest) {
   try {
+    await assertFeatureEnabled('ai.generate')
     const { messages } = await request.json()
 
     const completion = await openai.chat.completions.create({
@@ -22,6 +24,12 @@ export async function POST(request: NextRequest) {
       usage: completion.usage
     })
   } catch (error) {
+    if (error instanceof FeatureDisabledError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 403 }
+      )
+    }
     console.error('OpenAI API Error:', error)
     return NextResponse.json(
       { error: 'AI機能でエラーが発生しました' },

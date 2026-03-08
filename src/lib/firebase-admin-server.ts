@@ -1,10 +1,12 @@
 // Firebase Admin SDK for server-side operations
 import { initializeApp, getApps, cert, App } from 'firebase-admin/app'
 import { getAuth, Auth } from 'firebase-admin/auth'
+import { getFirestore, Firestore } from 'firebase-admin/firestore'
 import { isAdminUser } from './admin-users'
 
 let adminApp: App | null = null
 let adminAuth: Auth | null = null
+let adminDb: Firestore | null = null
 
 // Firebase Admin SDKの初期化
 function initializeAdminApp(): App {
@@ -72,6 +74,13 @@ function getAdminAuth(): Auth {
   return adminAuth
 }
 
+function getAdminDb(): Firestore {
+  if (!adminDb) {
+    adminDb = getFirestore(getAdminApp())
+  }
+  return adminDb
+}
+
 // 管理者ユーザーにカスタムクレームを設定
 export async function setAdminClaims(uid: string, email: string): Promise<void> {
   try {
@@ -119,5 +128,5 @@ export async function removeAdminClaims(uid: string): Promise<void> {
 
 // 後方互換性のため、既存のコードで使用されている可能性があるためエクスポート
 export { getAdminApp as adminApp, getAdminAuth as adminAuth }
-
+export { getAdminDb as adminFirestore }
 

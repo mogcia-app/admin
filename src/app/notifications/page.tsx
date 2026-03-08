@@ -1,9 +1,8 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Plus, Search, Filter, Loader2, BarChart3, RefreshCw } from 'lucide-react'
+import { Plus, Search, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { NotificationModal } from '@/components/notifications/notification-modal'
 import { NotificationList } from '@/components/notifications/notification-list'
 import { Notification } from '@/types'
@@ -141,96 +140,64 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* ヘッダー */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">お知らせ管理</h1>
-          <p className="text-muted-foreground">
-            ユーザー向けのお知らせ・メンテナンス情報の作成と管理
-            {error && <span className="text-destructive ml-2">({error})</span>}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button onClick={refreshNotifications} variant="outline">
-            <RefreshCw className="h-4 w-4 mr-2" />
-            更新
-          </Button>
-          <Button onClick={() => setShowCreateModal(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            新規お知らせ作成
-          </Button>
+    <div className="space-y-4">
+      <div className="border border-slate-200 bg-white shadow-sm">
+        <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight text-slate-900">お知らせ管理</h1>
+            <p className="text-sm text-slate-500">
+              {filteredNotifications.length} 件を表示中
+              {error && <span className="text-red-600 ml-2">({error})</span>}
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button onClick={refreshNotifications} variant="outline" className="rounded-none">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              更新
+            </Button>
+            <Button onClick={() => setShowCreateModal(true)} className="rounded-none bg-slate-900 hover:bg-slate-800">
+              <Plus className="h-4 w-4 mr-2" />
+              新規お知らせ作成
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* 統計情報 */}
       <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">総お知らせ数</CardTitle>
-            <BarChart3 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {statsLoading ? '-' : stats.totalNotifications}
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">公開中</CardTitle>
-            <BarChart3 className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {statsLoading ? '-' : stats.publishedNotifications}
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">下書き</CardTitle>
-            <BarChart3 className="h-4 w-4 text-yellow-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {statsLoading ? '-' : stats.draftNotifications}
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">総閲覧数</CardTitle>
-            <BarChart3 className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {statsLoading ? '-' : stats.totalReads.toLocaleString()}
-            </div>
-          </CardContent>
-        </Card>
+        <div className="border border-slate-200 bg-white px-5 py-4">
+          <p className="text-xs text-slate-500">総お知らせ数</p>
+          <p className="text-2xl font-semibold mt-1">{statsLoading ? '-' : stats.totalNotifications}</p>
+        </div>
+        <div className="border border-slate-200 bg-white px-5 py-4">
+          <p className="text-xs text-slate-500">公開中</p>
+          <p className="text-2xl font-semibold mt-1">{statsLoading ? '-' : stats.publishedNotifications}</p>
+        </div>
+        <div className="border border-slate-200 bg-white px-5 py-4">
+          <p className="text-xs text-slate-500">下書き</p>
+          <p className="text-2xl font-semibold mt-1">{statsLoading ? '-' : stats.draftNotifications}</p>
+        </div>
+        <div className="border border-slate-200 bg-white px-5 py-4">
+          <p className="text-xs text-slate-500">総閲覧数</p>
+          <p className="text-2xl font-semibold mt-1">{statsLoading ? '-' : stats.totalReads.toLocaleString()}</p>
+        </div>
       </div>
 
-      {/* 検索・フィルター */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
+      <div className="border border-slate-200 bg-white px-5 py-4 flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1 min-w-[260px]">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
             type="search"
             placeholder="お知らせを検索..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 pr-4 py-2 w-full bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            className="pl-10 pr-4 h-10 w-full bg-white border border-slate-200 rounded-none text-sm focus:outline-none focus:ring-2 focus:ring-slate-300"
           />
         </div>
         
         <select
           value={selectedStatus}
           onChange={(e) => setSelectedStatus(e.target.value)}
-          className="px-3 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          className="h-10 px-3 bg-white border border-slate-200 rounded-none text-sm focus:outline-none focus:ring-2 focus:ring-slate-300"
         >
           <option value="all">すべてのステータス</option>
           <option value="published">公開中</option>
@@ -241,7 +208,7 @@ export default function NotificationsPage() {
         <select
           value={selectedType}
           onChange={(e) => setSelectedType(e.target.value)}
-          className="px-3 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          className="h-10 px-3 bg-white border border-slate-200 rounded-none text-sm focus:outline-none focus:ring-2 focus:ring-slate-300"
         >
           <option value="all">すべての種別</option>
           <option value="info">情報</option>

@@ -49,6 +49,8 @@ const industryOptions = [
 
 export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId }: UserModalProps) {
   const { companies } = useCompanies()
+  const isCreateMode = !user
+  const [showAdvancedSettings, setShowAdvancedSettings] = useState(false)
   const [formData, setFormData] = useState<Partial<User>>({
     name: '',
     email: '',
@@ -116,6 +118,7 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
     billing: false,
     notes: false
   })
+  const [editSection, setEditSection] = useState<'sns' | 'business' | 'products'>('sns')
 
   const toggleSection = (section: string) => {
     setExpandedSections(prev => ({
@@ -239,6 +242,13 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
       })
     }
   }, [user, preselectedCompanyId])
+
+  useEffect(() => {
+    if (isOpen) {
+      setShowAdvancedSettings(false)
+      setEditSection('sns')
+    }
+  }, [isOpen, user])
 
   // 契約タイプ変更時の終了日自動設定
   useEffect(() => {
@@ -491,6 +501,33 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
       return
     }
 
+    if (!isCreateMode) {
+      const currentInstagram = formData.snsAISettings?.instagram || createInstagramSNSSetting()
+      onSave({
+        snsAISettings: {
+          ...formData.snsAISettings,
+          instagram: {
+            ...currentInstagram,
+            whyThisSNS: String(currentInstagram.whyThisSNS || ''),
+            cautions: String(currentInstagram.cautions || ''),
+          },
+        },
+        businessInfo: {
+          ...formData.businessInfo!,
+          industry: String(formData.businessInfo?.industry || ''),
+          companySize: formData.businessInfo?.companySize || 'individual',
+          businessType: formData.businessInfo?.businessType || 'b2c',
+          description: String(formData.businessInfo?.description || ''),
+          targetMarket: (formData.businessInfo?.targetMarket || []).filter(Boolean),
+          catchphrase: String(formData.businessInfo?.catchphrase || ''),
+          initialFollowers: Number(formData.businessInfo?.initialFollowers || 0),
+        },
+        updatedAt: new Date().toISOString(),
+      })
+      onClose()
+      return
+    }
+
     onSave({
       ...formData,
       businessInfo: {
@@ -503,6 +540,13 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
     onClose()
   }
 
+  const hasName = !!formData.name?.trim()
+  const hasEmail = !!formData.email?.trim()
+  const hasValidEmail = !formData.email?.trim() || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())
+  const hasPassword = !isCreateMode || !!formData.password
+  const hasValidPassword = !isCreateMode || !!formData.password && formData.password.length >= 8
+  const canSave = hasName && hasEmail && hasValidEmail && hasPassword && hasValidPassword
+
   return createPortal(
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-50 p-4">
       <div className="bg-background rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto relative">
@@ -511,9 +555,9 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
             <h2 className="text-2xl font-bold">
               {user ? '利用者情報編集' : '新規利用者追加'}
             </h2>
-            {!user && (
+            {isCreateMode && (
               <p className="text-sm text-muted-foreground mt-1">
-                必須項目（名前、メール、パスワード、プラン階層）を入力して保存してください
+                まずは必須項目だけ入力すれば登録できます。詳細設定は後からでも編集可能です。
               </p>
             )}
           </div>
@@ -526,8 +570,8 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
           {/* 必須情報 - 最初に表示 */}
           <Card className="border-2 border-primary/20">
             <CardHeader>
-              <CardTitle className="text-lg">必須情報</CardTitle>
-              <CardDescription>新規利用者追加に必要な基本情報を入力してください</CardDescription>
+              <CardTitle className="text-lg">{isCreateMode ? '必須情報' : '利用者情報（参照）'}</CardTitle>
+              <CardDescription>{isCreateMode ? '新規利用者追加に必要な基本情報を入力してください' : '名前・メールはここでは変更できません'}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -542,7 +586,11 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
                     className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
                     placeholder="利用者名を入力"
                     required
+                    disabled={!isCreateMode}
                   />
+                  {!hasName && (
+                    <p className="text-xs text-red-500 mt-1">名前は必須です</p>
+                  )}
                 </div>
                 
                 <div>
@@ -556,12 +604,16 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
                     className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
                     placeholder="email@example.com"
                     required
+                    disabled={!isCreateMode}
                   />
+                  {hasEmail && !hasValidEmail && (
+                    <p className="text-xs text-red-500 mt-1">メールアドレスの形式が正しくありません</p>
+                  )}
                 </div>
               </div>
 
               {/* パスワード設定（新規作成時のみ） */}
-              {!user && (
+              {isCreateMode && (
                 <div>
                   <label className="block text-sm font-medium mb-2">
                     初期パスワード <span className="text-red-500">*</span>
@@ -578,12 +630,16 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
                     minLength={8}
                     required
                   />
+                  {!hasValidPassword && (
+                    <p className="text-xs text-red-500 mt-1">8文字以上で入力してください</p>
+                  )}
                   <p className="text-xs text-muted-foreground mt-1">
                     このパスワードで利用者側アプリにログインできます。利用者は後で変更可能です。
                   </p>
                 </div>
               )}
 
+              {isCreateMode && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* プラン階層選択（会員サイト向け） */}
                 <div>
@@ -628,38 +684,324 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
                   </select>
                 </div>
               </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* オプション情報 - 折りたたみ可能にする */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">オプション情報</CardTitle>
-              <CardDescription>必要に応じて設定してください</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* 企業選択（B2B向け） */}
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  所属企業（オプション）
-                </label>
-                <select
-                  value={formData.companyId || ''}
-                  onChange={(e) => setFormData({ ...formData, companyId: e.target.value || undefined })}
-                  className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  <option value="">企業を選択しない（個人利用者）</option>
-                  {companies
-                    .filter(company => company.status === 'active')
-                    .map((company) => (
-                      <option key={company.id} value={company.id}>
-                        {company.name} {company.industry ? `(${company.industry})` : ''}
-                      </option>
-                    ))}
-                </select>
-              </div>
-            </CardContent>
-          </Card>
+          {!isCreateMode && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">編集項目</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" type="button" variant={editSection === 'sns' ? 'default' : 'outline'} onClick={() => setEditSection('sns')}>
+                    SNS方針
+                  </Button>
+                  <Button size="sm" type="button" variant={editSection === 'business' ? 'default' : 'outline'} onClick={() => setEditSection('business')}>
+                    事業情報
+                  </Button>
+                  <Button size="sm" type="button" variant={editSection === 'products' ? 'default' : 'outline'} onClick={() => setEditSection('products')}>
+                    商品・サービス
+                  </Button>
+                </div>
+
+                {editSection === 'sns' && (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">SNS活用の目的</label>
+                      <textarea
+                        value={formData.snsAISettings?.instagram?.whyThisSNS || ''}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            snsAISettings: {
+                              ...formData.snsAISettings,
+                              instagram: {
+                                ...(formData.snsAISettings?.instagram || createInstagramSNSSetting()),
+                                whyThisSNS: e.target.value,
+                              },
+                            },
+                          })
+                        }
+                        className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                        rows={4}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">NGワード設定</label>
+                      <textarea
+                        value={formData.snsAISettings?.instagram?.cautions || ''}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            snsAISettings: {
+                              ...formData.snsAISettings,
+                              instagram: {
+                                ...(formData.snsAISettings?.instagram || createInstagramSNSSetting()),
+                                cautions: e.target.value,
+                              },
+                            },
+                          })
+                        }
+                        className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                        rows={4}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {editSection === 'business' && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-2">業界 / その他</label>
+                        <input
+                          type="text"
+                          value={formData.businessInfo?.industry || ''}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              businessInfo: { ...formData.businessInfo!, industry: e.target.value },
+                            })
+                          }
+                          list="industry-options"
+                          className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                        />
+                        <datalist id="industry-options">
+                          {industryOptions.map((industry) => (
+                            <option key={industry} value={industry} />
+                          ))}
+                        </datalist>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2">会社規模</label>
+                        <select
+                          value={formData.businessInfo?.companySize || 'individual'}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              businessInfo: { ...formData.businessInfo!, companySize: e.target.value as BusinessInfo['companySize'] },
+                            })
+                          }
+                          className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                        >
+                          <option value="individual">個人</option>
+                          <option value="small">小規模</option>
+                          <option value="medium">中規模</option>
+                          <option value="large">大規模</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2">事業タイプ</label>
+                        <select
+                          value={formData.businessInfo?.businessType || 'b2c'}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              businessInfo: { ...formData.businessInfo!, businessType: e.target.value as BusinessInfo['businessType'] },
+                            })
+                          }
+                          className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                        >
+                          <option value="b2c">B2C</option>
+                          <option value="b2b">B2B</option>
+                          <option value="both">両方</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">事業内容</label>
+                      <textarea
+                        value={formData.businessInfo?.description || ''}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            businessInfo: { ...formData.businessInfo!, description: e.target.value },
+                          })
+                        }
+                        className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                        rows={3}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">ターゲット市場</label>
+                      <textarea
+                        value={(formData.businessInfo?.targetMarket || []).join('\n')}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            businessInfo: {
+                              ...formData.businessInfo!,
+                              targetMarket: e.target.value
+                                .split('\n')
+                                .map((line) => line.trim())
+                                .filter(Boolean),
+                            },
+                          })
+                        }
+                        className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                        rows={3}
+                        placeholder="1行に1件ずつ入力"
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-2">キャッチコピー</label>
+                        <input
+                          type="text"
+                          value={formData.businessInfo?.catchphrase || ''}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              businessInfo: { ...formData.businessInfo!, catchphrase: e.target.value },
+                            })
+                          }
+                          className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2">フォロワー数</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={formData.businessInfo?.initialFollowers || 0}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              businessInfo: { ...formData.businessInfo!, initialFollowers: parseInt(e.target.value || '0', 10) || 0 },
+                            })
+                          }
+                          className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {editSection === 'products' && (
+                  <div className="border rounded-md p-3 space-y-2">
+                    <label className="block text-sm font-medium">商品・サービス情報</label>
+                    {formData.businessInfo?.productsOrServices && formData.businessInfo.productsOrServices.length > 0 ? (
+                      <div className="space-y-2">
+                        {formData.businessInfo.productsOrServices.map((product, index) => (
+                          <div key={product.id} className="flex items-start gap-2 p-2 border rounded">
+                            <div className="flex-1">
+                              <div className="font-medium text-sm">{product.name || '-'}</div>
+                              <div className="text-xs text-muted-foreground">{product.details || '-'}</div>
+                              <div className="text-xs">価格: {product.price || '-'}</div>
+                            </div>
+                            <Button variant="outline" size="sm" onClick={() => handleEditProduct(index)}>
+                              編集
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={() => handleRemoveProduct(index)}>
+                              削除
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">未登録</p>
+                    )}
+
+                    <div className="space-y-2 border-t pt-2">
+                      <input
+                        type="text"
+                        value={editingProduct.name || ''}
+                        onChange={(e) => setEditingProduct({ ...editingProduct, name: e.target.value })}
+                        className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                        placeholder="商品・サービス名"
+                      />
+                      <textarea
+                        value={editingProduct.details || ''}
+                        onChange={(e) => setEditingProduct({ ...editingProduct, details: e.target.value })}
+                        className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                        rows={2}
+                        placeholder="詳細"
+                      />
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={editingProduct.price || ''}
+                          onChange={(e) => setEditingProduct({ ...editingProduct, price: e.target.value })}
+                          className="flex-1 px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                          placeholder="価格（税込）"
+                        />
+                        {editingProductIndex === null ? (
+                          <Button onClick={handleAddProduct} size="sm">
+                            <Plus className="h-4 w-4 mr-1" />
+                            追加
+                          </Button>
+                        ) : (
+                          <>
+                            <Button onClick={handleUpdateProduct} size="sm">更新</Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setEditingProduct({ name: '', details: '', price: '' })
+                                setEditingProductIndex(null)
+                              }}
+                            >
+                              キャンセル
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {isCreateMode && !showAdvancedSettings && (
+            <Card className="border-dashed">
+              <CardHeader>
+                <CardTitle className="text-lg">このまま保存して登録できます</CardTitle>
+                <CardDescription>
+                  「契約SNS」「事業情報」「契約・課金情報」「メモ」は必要になった時に編集してください。
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button variant="outline" onClick={() => setShowAdvancedSettings(true)}>
+                  詳細設定を開く
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {(isCreateMode && showAdvancedSettings) && (
+            <>
+              {/* オプション情報 - 折りたたみ可能にする */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">オプション情報</CardTitle>
+                  <CardDescription>必要に応じて設定してください</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* 企業選択（B2B向け） */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      所属企業（オプション）
+                    </label>
+                    <select
+                      value={formData.companyId || ''}
+                      onChange={(e) => setFormData({ ...formData, companyId: e.target.value || undefined })}
+                      className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                    >
+                      <option value="">企業を選択しない（個人利用者）</option>
+                      {companies
+                        .filter(company => company.status === 'active')
+                        .map((company) => (
+                          <option key={company.id} value={company.id}>
+                            {company.name} {company.industry ? `(${company.industry})` : ''}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                </CardContent>
+              </Card>
 
           {/* 契約SNS選択 */}
           <Card>
@@ -1221,17 +1563,26 @@ export function UserModal({ isOpen, onClose, user, onSave, preselectedCompanyId 
             </CardContent>
             )}
           </Card>
+            </>
+          )}
         </div>
 
         {/* フッター */}
-        <div className="flex items-center justify-end gap-3 p-6 border-t">
+        <div className="flex items-center justify-between gap-3 p-6 border-t">
+          <p className="text-xs text-muted-foreground">
+            {isCreateMode
+              ? (canSave ? '必須項目の入力は完了しています。' : '必須項目を入力すると保存できます。')
+              : '編集対象の項目のみ保存されます。'}
+          </p>
+          <div className="flex items-center gap-3">
           <Button variant="outline" onClick={onClose}>
             キャンセル
           </Button>
-          <Button onClick={handleSave}>
+          <Button onClick={handleSave} disabled={!canSave}>
             <Save className="h-4 w-4 mr-2" />
-            保存
+            {isCreateMode ? 'この内容で作成' : '保存'}
           </Button>
+          </div>
         </div>
       </div>
     </div>,
