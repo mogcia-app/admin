@@ -8,10 +8,10 @@ import {
   User,
   X,
   Bell,
-  History,
   MousePointerClick,
   Wrench,
   ClipboardList,
+  LogIn,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -31,16 +31,16 @@ const sidebarItems: SidebarItem[] = [
     href: '/admin/intake',
   },
   {
-    id: 'audit-logs',
-    label: '代理店監査ログ',
-    icon: History,
-    href: '/audit-logs',
-  },
-  {
     id: 'ui-events',
     label: 'ユーザー行動ログ',
     icon: MousePointerClick,
     href: '/admin/ui-events',
+  },
+  {
+    id: 'login-events',
+    label: 'ログインイベント',
+    icon: LogIn,
+    href: '/admin/login-events',
   },
   // {
   //   id: 'kpi',

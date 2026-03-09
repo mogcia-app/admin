@@ -5,10 +5,11 @@ import { Sidebar } from './sidebar'
 import { AdminLayoutProps } from '@/types'
 import { useAuth } from '@/contexts/auth-context'
 import { Loader2 } from 'lucide-react'
+import { PageButtonClickTracker } from '@/components/tracking/page-button-click-tracker'
 
 export function AdminLayout({ children }: AdminLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const { loading, adminUser } = useAuth()
+  const { loading, adminUser, user } = useAuth()
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen)
 
@@ -35,6 +36,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      <PageButtonClickTracker user={user} />
       <Sidebar isOpen={sidebarOpen} onToggle={toggleSidebar} />
       
       <div className="lg:ml-20 relative z-0">

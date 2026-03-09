@@ -1,6 +1,6 @@
 import { AdminLayout } from '@/components/layout/admin-layout'
 
-export default function AuditLogsLayout({
+export default function LoginEventsLayout({
   children,
 }: {
   children: React.ReactNode

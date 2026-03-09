@@ -12,6 +12,13 @@ interface LoginFormProps {
   onLoginSuccess: () => void
 }
 
+function resolveErrorCode(err: unknown): string {
+  if (err && typeof err === 'object' && 'code' in err && typeof err.code === 'string') {
+    return err.code
+  }
+  return 'unknown'
+}
+
 export function LoginForm({ onLoginSuccess }: LoginFormProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -30,12 +37,38 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
       }
 
       // Firebase Auth でログイン
-      await signInWithEmailAndPassword(auth, email, password)
+      const credential = await signInWithEmailAndPassword(auth, email, password)
+      const idToken = await credential.user.getIdToken()
+
+      // 監査: ログイン成功イベント
+      await fetch('/api/auth/login-events/success', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          actorName: credential.user.displayName || '',
+          source: 'admin.login-form',
+        }),
+      }).catch(() => undefined)
       
       // ログイン成功
       onLoginSuccess()
     } catch (err) {
       console.error('Login error:', err)
+      // 監査: ログイン失敗イベント（認証不要）
+      await fetch('/api/auth/login-events/failed', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          actorEmail: email,
+          errorCode: resolveErrorCode(err),
+          source: 'admin.login-form',
+        }),
+      }).catch(() => undefined)
       setError(err instanceof Error ? err.message : 'ログインに失敗しました')
     } finally {
       setLoading(false)
