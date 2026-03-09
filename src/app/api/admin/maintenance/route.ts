@@ -34,7 +34,7 @@ function getRequestIp(request: NextRequest): string | null {
 export async function GET(request: NextRequest) {
   try {
     const actor = await authenticateAdminApiRequest(request)
-    assertRoleAllowed(actor, ['admin', 'billing_admin', 'super_admin'])
+    assertRoleAllowed(actor, ['admin', 'hq_admin', 'billing_admin', 'super_admin'])
 
     const current = await getMaintenanceCurrent()
 

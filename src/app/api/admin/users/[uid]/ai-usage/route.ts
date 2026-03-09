@@ -32,7 +32,7 @@ function resolveMonth(searchParams: URLSearchParams): { month: string; error?: s
 export async function GET(request: NextRequest, context: { params: Promise<{ uid: string }> }) {
   try {
     const actor = await authenticateAdminApiRequest(request)
-    assertRoleAllowed(actor, ['super_admin', 'billing_admin'])
+    assertRoleAllowed(actor, ['super_admin', 'billing_admin', 'admin', 'hq_admin'])
 
     const { uid } = await context.params
     if (!uid) {
