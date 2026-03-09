@@ -4,6 +4,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { adminFirestore } from '@/lib/firebase-admin-server'
 import { authenticateAdminApiRequest, assertRoleAllowed } from '@/lib/admin-api-auth'
 
+export const runtime = 'nodejs'
+
 interface CreateIntakeLinkBody {
   companyName?: string
   registeredCompanyId?: string

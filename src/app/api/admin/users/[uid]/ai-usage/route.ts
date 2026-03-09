@@ -13,6 +13,8 @@ import {
   resolveTier,
 } from '@/lib/ai-usage-limit'
 
+export const runtime = 'nodejs'
+
 function resolveMonth(searchParams: URLSearchParams): { month: string; error?: string } {
   const monthParam = searchParams.get('month')
   if (!monthParam) {

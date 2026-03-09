@@ -4,6 +4,8 @@ import { UI_EVENT_TYPE, type UiEventAggregateResponse } from '@/lib/ui-event-typ
 import { UI_EVENT_COLLECTION, assertUiEventAdminRole, parseDateFilter } from '@/lib/ui-event-server'
 import { adminFirestore } from '@/lib/firebase-admin-server'
 
+export const runtime = 'nodejs'
+
 function toIso(value: unknown): string {
   if (!value) return ''
   if (typeof value === 'string') return value

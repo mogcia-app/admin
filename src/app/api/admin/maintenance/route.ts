@@ -15,6 +15,8 @@ import {
   validatePatchResult,
 } from '@/lib/server/maintenance-admin'
 
+export const runtime = 'nodejs'
+
 interface PatchRequestBody {
   reason?: string
   expectedVersion?: number

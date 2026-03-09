@@ -4,6 +4,8 @@ import { adminFirestore } from '@/lib/firebase-admin-server'
 import { authenticateAdminApiRequest, assertRoleAllowed } from '@/lib/admin-api-auth'
 import { MAINTENANCE_EVENTS, toIso } from '@/lib/server/maintenance-admin'
 
+export const runtime = 'nodejs'
+
 interface MaintenanceAuditRow {
   id: string
   event: string
