@@ -13,6 +13,7 @@ import { getPlanName, getUserPlanTier, normalizePlanTier } from '@/lib/plan-acce
 import { recordPlanHistory } from '@/lib/plan-history'
 import { useAuth } from '@/contexts/auth-context'
 import { Textarea } from '@/components/ui/textarea'
+import { getErrorMessage, parseJsonResponse } from '@/lib/http-response'
 
 // SNSアイコンマッピング
 const snsIcons = {
@@ -240,11 +241,11 @@ export default function UsersPage() {
           Authorization: `Bearer ${idToken}`,
         },
       })
-      const data = await response.json()
+      const data = await parseJsonResponse<AiUsageSummary & Record<string, unknown>>(response)
       if (!response.ok) {
-        throw new Error(data?.error || 'AI利用状況の取得に失敗しました')
+        throw new Error(getErrorMessage(data, 'AI利用状況の取得に失敗しました'))
       }
-      setAiUsageSummary(data as AiUsageSummary)
+      setAiUsageSummary(data)
     } catch (err) {
       setAiUsageSummary(null)
       setAiUsageError(err instanceof Error ? err.message : 'AI利用状況の取得に失敗しました')
@@ -283,20 +284,20 @@ export default function UsersPage() {
         }),
       })
 
-      const data = await response.json()
+      const data = await parseJsonResponse<AiUsageSummary & Record<string, unknown>>(response)
       if (response.status === 409) {
         throw new Error('他の管理者が先に更新しました。画面を再読み込みして再実行してください。')
       }
       if (!response.ok) {
-        throw new Error(data?.error || 'planTier更新に失敗しました')
+        throw new Error(getErrorMessage(data, 'planTier更新に失敗しました'))
       }
 
       setSelectedUser((prev) =>
         prev
           ? {
               ...prev,
-              planTier: data.after,
-              updatedAt: data.updatedAt || new Date().toISOString(),
+              planTier: normalizePlanTier(String(data.after || prev.planTier)),
+              updatedAt: String(data.updatedAt || new Date().toISOString()),
             }
           : prev
       )
@@ -334,12 +335,12 @@ export default function UsersPage() {
         }),
       })
 
-      const data = await response.json()
+      const data = await parseJsonResponse<AiUsageSummary & Record<string, unknown>>(response)
       if (!response.ok) {
-        throw new Error(data?.error || 'AI利用回数のリセットに失敗しました')
+        throw new Error(getErrorMessage(data, 'AI利用回数のリセットに失敗しました'))
       }
 
-      setAiUsageSummary(data as AiUsageSummary)
+      setAiUsageSummary(data)
       setResetReason('')
       setShowResetReasonModal(false)
       alert('AI利用回数をリセットしました')
@@ -433,7 +434,7 @@ export default function UsersPage() {
             Authorization: `Bearer ${idToken}`,
           },
         })
-        const data = await response.json()
+        const data = await parseJsonResponse(response)
         if (!response.ok) return
         setOnboardingMeta({
           onboardingInitialPassword: String(data.onboardingInitialPassword || ''),
@@ -505,8 +506,8 @@ export default function UsersPage() {
         }),
       })
 
-      const data = await response.json()
-      if (!response.ok) throw new Error(data?.error || '招待リンク生成に失敗しました')
+      const data = await parseJsonResponse(response)
+      if (!response.ok) throw new Error(getErrorMessage(data, '招待リンク生成に失敗しました'))
 
       setInviteLink(String(data.inviteUrl || ''))
       setInviteExpiresAt(String(data.expiresAt || ''))
@@ -530,9 +531,9 @@ export default function UsersPage() {
           Authorization: `Bearer ${idToken}`,
         },
       })
-      const data = await response.json()
+      const data = await parseJsonResponse(response)
       if (!response.ok) {
-        throw new Error(data?.error || '初期パスワードの再発行に失敗しました')
+        throw new Error(getErrorMessage(data, '初期パスワードの再発行に失敗しました'))
       }
 
       const nextPassword = String(data.password || '')

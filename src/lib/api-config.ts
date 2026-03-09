@@ -1,3 +1,5 @@
+import { parseJsonResponse } from '@/lib/http-response'
+
 // Cloud Functions API 設定
 const FUNCTIONS_BASE_URL = 'https://us-central1-signal-v1-fc481.cloudfunctions.net'
 
@@ -50,7 +52,7 @@ export const API_ENDPOINTS = {
 }
 
 // HTTP ヘルパー関数
-export const apiRequest = async (url: string, options: RequestInit = {}) => {
+export const apiRequest = async <T = any>(url: string, options: RequestInit = {}) => {
   const defaultOptions: RequestInit = {
     headers: {
       'Content-Type': 'application/json',
@@ -70,7 +72,7 @@ export const apiRequest = async (url: string, options: RequestInit = {}) => {
       throw new Error(`HTTP error! status: ${response.status}`)
     }
     
-    return await response.json()
+    return await parseJsonResponse<T>(response)
   } catch (error) {
     // NetworkErrorやFailed to fetchの場合も詳細な情報を提供
     if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
@@ -91,31 +93,31 @@ export const apiRequest = async (url: string, options: RequestInit = {}) => {
 }
 
 // GET リクエスト
-export const apiGet = (url: string, params?: Record<string, string>) => {
+export const apiGet = <T = any>(url: string, params?: Record<string, string>) => {
   const urlWithParams = params 
     ? `${url}?${new URLSearchParams(params).toString()}`
     : url
   
-  return apiRequest(urlWithParams, { method: 'GET' })
+  return apiRequest<T>(urlWithParams, { method: 'GET' })
 }
 
 // POST リクエスト
-export const apiPost = (url: string, data: any) => {
-  return apiRequest(url, {
+export const apiPost = <T = any>(url: string, data: any) => {
+  return apiRequest<T>(url, {
     method: 'POST',
     body: JSON.stringify(data),
   })
 }
 
 // PUT リクエスト
-export const apiPut = (url: string, data: any) => {
-  return apiRequest(url, {
+export const apiPut = <T = any>(url: string, data: any) => {
+  return apiRequest<T>(url, {
     method: 'PUT',
     body: JSON.stringify(data),
   })
 }
 
 // DELETE リクエスト
-export const apiDelete = (url: string) => {
-  return apiRequest(url, { method: 'DELETE' })
+export const apiDelete = <T = any>(url: string) => {
+  return apiRequest<T>(url, { method: 'DELETE' })
 }

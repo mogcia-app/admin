@@ -69,6 +69,40 @@
 環境: Production のみチェック
 ```
 
+**8. FIREBASE_ADMIN_PROJECT_ID（サーバー側必須）**
+```
+名前: FIREBASE_ADMIN_PROJECT_ID
+値: signal-v1-fc481
+環境: Production, Preview, Development (全てチェック)
+```
+
+**9. FIREBASE_ADMIN_CLIENT_EMAIL（サーバー側必須）**
+```
+名前: FIREBASE_ADMIN_CLIENT_EMAIL
+値: サービスアカウントJSONの client_email
+環境: Production, Preview, Development (全てチェック)
+```
+
+**10. FIREBASE_ADMIN_PRIVATE_KEY（サーバー側必須）**
+```
+名前: FIREBASE_ADMIN_PRIVATE_KEY
+値: サービスアカウントJSONの private_key
+環境: Production, Preview, Development (全てチェック)
+```
+
+**11. INVITE_LINK_SECRET（サーバー側必須）**
+```
+名前: INVITE_LINK_SECRET
+値: 32文字以上のランダム文字列
+環境: Production, Preview, Development (全てチェック)
+```
+
+### FIREBASE_ADMIN_PRIVATE_KEY の入力形式
+
+- Vercel の値には、サービスアカウントJSONの `private_key` をそのまま貼り付けてください。
+- `-----BEGIN PRIVATE KEY-----` から `-----END PRIVATE KEY-----` まで含めます。
+- 文字列中の改行は `\n` のままで問題ありません（コード側で復元しています）。
+
 ### Step 5: 各環境変数の追加方法
 
 1. **「Add New」** ボタンをクリック

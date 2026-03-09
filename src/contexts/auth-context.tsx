@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react'
 import { User, onAuthStateChanged, signOut } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
 import { getAdminUser, AdminUser } from '@/lib/admin-users'
+import { parseJsonResponse } from '@/lib/http-response'
 
 interface AuthContextType {
   user: User | null
@@ -81,7 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               })
               
               if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}))
+                const errorData = await parseJsonResponse(response).catch(() => ({}))
                 console.error('Failed to set admin claims:', response.status, response.statusText, errorData)
               } else {
                 // トークンを強制的に再取得してカスタムクレームを反映

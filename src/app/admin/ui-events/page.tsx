@@ -5,6 +5,7 @@ import { Loader2, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/contexts/auth-context'
 import { UI_EVENT_TYPE } from '@/lib/ui-event-types'
+import { getErrorMessage, parseJsonResponse } from '@/lib/http-response'
 
 interface AggregateItem {
   key: string
@@ -79,12 +80,12 @@ export default function UiEventsPage() {
         },
       })
 
-      const data = await response.json()
+      const data = await parseJsonResponse<UiEventsResponse & Record<string, unknown>>(response)
       if (!response.ok) {
-        throw new Error(data?.error || 'UI操作ログの取得に失敗しました')
+        throw new Error(getErrorMessage(data, 'UI操作ログの取得に失敗しました'))
       }
 
-      setResult(data as UiEventsResponse)
+      setResult(data)
     } catch (err) {
       setResult(null)
       setError(err instanceof Error ? err.message : 'UI操作ログの取得に失敗しました')

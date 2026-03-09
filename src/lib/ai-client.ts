@@ -1,5 +1,6 @@
 // クライアントサイド用のAI API呼び出し
 import { AIMessage, AIResponse } from '@/types'
+import { parseJsonResponse } from '@/lib/http-response'
 
 const API_BASE_URL = '/api/ai'
 
@@ -28,7 +29,7 @@ export async function sendChatMessage(
       throw new Error(`API Error: ${response.statusText}`)
     }
 
-    return await response.json()
+    return await parseJsonResponse<AIResponse>(response)
   } catch (error) {
     console.error('AI API Error:', error)
     throw new Error(`AI機能でエラーが発生しました: ${error instanceof Error ? error.message : '不明なエラー'}`)

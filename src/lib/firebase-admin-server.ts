@@ -17,7 +17,15 @@ function initializeAdminApp(): App {
   // 環境変数から認証情報を取得
   const projectId = process.env.FIREBASE_ADMIN_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
   const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL
-  const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, '\n')
+  const privateKeyRaw = process.env.FIREBASE_ADMIN_PRIVATE_KEY
+  const privateKey = privateKeyRaw
+    ? privateKeyRaw
+        .trim()
+        // .env形式で "..." 付きのまま設定されていても吸収する
+        .replace(/^"([\s\S]*)"$/, '$1')
+        .replace(/^'([\s\S]*)'$/, '$1')
+        .replace(/\\n/g, '\n')
+    : undefined
 
   // 環境変数のチェック
   if (!projectId) {
@@ -40,7 +48,14 @@ function initializeAdminApp(): App {
         }),
       })
     } catch (error) {
-      console.error('❌ Failed to initialize Firebase Admin with credentials:', error)
+      console.error('❌ Failed to initialize Firebase Admin with credentials:', {
+        error,
+        projectId,
+        clientEmailPresent: Boolean(clientEmail),
+        privateKeyHasBegin: privateKey.includes('BEGIN PRIVATE KEY'),
+        privateKeyHasEnd: privateKey.includes('END PRIVATE KEY'),
+        privateKeyLength: privateKey.length,
+      })
       throw new Error('Firebase Admin SDK initialization failed. Please check your environment variables.')
     }
   } else {
@@ -129,4 +144,3 @@ export async function removeAdminClaims(uid: string): Promise<void> {
 // 後方互換性のため、既存のコードで使用されている可能性があるためエクスポート
 export { getAdminApp as adminApp, getAdminAuth as adminAuth }
 export { getAdminDb as adminFirestore }
-

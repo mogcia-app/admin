@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { getErrorMessage, parseJsonResponse } from '@/lib/http-response'
 
 interface IntakeData {
   token: string
@@ -84,9 +85,9 @@ export default function IntakePage({ params }: { params: Promise<{ token: string
         setLoading(true)
         setError(null)
         const response = await fetch(`/api/intake/${token}`)
-        const data = await response.json()
+        const data = await parseJsonResponse<IntakeData & Record<string, unknown>>(response)
         if (!response.ok) {
-          throw new Error(data?.error || '申込情報の取得に失敗しました')
+          throw new Error(getErrorMessage(data, '申込情報の取得に失敗しました'))
         }
 
         setInvite(data)
@@ -169,9 +170,9 @@ export default function IntakePage({ params }: { params: Promise<{ token: string
         }),
       })
 
-      const data = await response.json()
+      const data = await parseJsonResponse(response)
       if (!response.ok) {
-        throw new Error(data?.error || '送信に失敗しました')
+        throw new Error(getErrorMessage(data, '送信に失敗しました'))
       }
 
       setSuccess('送信が完了しました。管理者の確認をお待ちください。')

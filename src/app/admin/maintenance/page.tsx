@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Loader2, RefreshCw, Save } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/contexts/auth-context'
+import { getErrorMessage, parseJsonResponse } from '@/lib/http-response'
 
 type SessionPolicy = 'allow_existing' | 'force_logout'
 
@@ -109,20 +110,25 @@ export default function AdminMaintenancePage() {
         }),
       ])
 
-      const statusJson = await statusRes.json()
-      const logsJson = await logsRes.json()
+      const statusJson = await parseJsonResponse<{ data: MaintenanceConfig } & Record<string, unknown>>(statusRes)
+      const logsJson = await parseJsonResponse<{ data?: { rows?: MaintenanceAuditLog[] } } & Record<string, unknown>>(logsRes)
 
       if (!statusRes.ok) {
-        throw new Error(statusJson?.error || 'メンテナンス設定の取得に失敗しました')
+        throw new Error(getErrorMessage(statusJson, 'メンテナンス設定の取得に失敗しました'))
       }
       if (!logsRes.ok) {
-        throw new Error(logsJson?.error || '監査ログの取得に失敗しました')
+        throw new Error(getErrorMessage(logsJson, '監査ログの取得に失敗しました'))
       }
 
-      const nextConfig = statusJson.data as MaintenanceConfig
+      const nextConfig = statusJson.data
       hydrateForm(nextConfig)
-
-      setLogs(((logsJson.data?.rows || []) as MaintenanceAuditLog[]).slice(0, 100))
+      const logData = logsJson.data
+      const rowsCandidate =
+        logData && typeof logData === 'object' && 'rows' in logData
+          ? (logData as { rows: unknown }).rows
+          : []
+      const rows = Array.isArray(rowsCandidate) ? (rowsCandidate as MaintenanceAuditLog[]) : []
+      setLogs(rows.slice(0, 100))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'データ取得に失敗しました')
     } finally {
@@ -215,13 +221,18 @@ export default function AdminMaintenancePage() {
         }),
       })
 
-      const data = await response.json()
+      const data = await parseJsonResponse(response)
       if (!response.ok) {
-        throw new Error(data?.error || '保存に失敗しました')
+        throw new Error(getErrorMessage(data, '保存に失敗しました'))
       }
 
-      const nextConfig = data?.data?.config as MaintenanceConfig
-      if (nextConfig) {
+      const dataPayload = data.data
+      const configCandidate =
+        dataPayload && typeof dataPayload === 'object' && 'config' in dataPayload
+          ? (dataPayload as { config: unknown }).config
+          : null
+      if (configCandidate && typeof configCandidate === 'object') {
+        const nextConfig = configCandidate as MaintenanceConfig
         hydrateForm(nextConfig)
       }
       setReason('')

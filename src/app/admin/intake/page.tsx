@@ -5,6 +5,7 @@ import { Copy, Loader2, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/contexts/auth-context'
 import { useCompanies } from '@/hooks/useCompanies'
+import { getErrorMessage, parseJsonResponse } from '@/lib/http-response'
 
 interface IntakeItem {
   token: string
@@ -29,6 +30,15 @@ interface ConfirmResult {
   email: string
   signalInviteUrl: string
   signalInviteExpiresAt: string
+}
+
+function toConfirmResult(data: Record<string, unknown>): ConfirmResult {
+  return {
+    uid: String(data.uid || ''),
+    email: String(data.email || ''),
+    signalInviteUrl: String(data.signalInviteUrl || ''),
+    signalInviteExpiresAt: String(data.signalInviteExpiresAt || ''),
+  }
 }
 
 function toPlanLabel(plan: string): string {
@@ -93,11 +103,11 @@ export default function AdminIntakePage() {
           Authorization: `Bearer ${idToken}`,
         },
       })
-      const data = await response.json()
+      const data = await parseJsonResponse<{ items?: IntakeItem[] } & Record<string, unknown>>(response)
       if (!response.ok) {
-        throw new Error(data?.error || '申込一覧の取得に失敗しました')
+        throw new Error(getErrorMessage(data, '申込一覧の取得に失敗しました'))
       }
-      setItems((data.items || []) as IntakeItem[])
+      setItems(data.items || [])
     } catch (err) {
       setError(err instanceof Error ? err.message : '申込一覧の取得に失敗しました')
     } finally {
@@ -128,12 +138,12 @@ export default function AdminIntakePage() {
         },
       })
 
-      const data = await response.json()
+      const data = await parseJsonResponse(response)
       if (!response.ok) {
-        throw new Error(data?.error || '救済確定に失敗しました')
+        throw new Error(getErrorMessage(data, '救済確定に失敗しました'))
       }
 
-      setConfirmResult(data as ConfirmResult)
+      setConfirmResult(toConfirmResult(data))
       await fetchItems()
     } catch (err) {
       setError(err instanceof Error ? err.message : '救済確定に失敗しました')
@@ -165,10 +175,10 @@ export default function AdminIntakePage() {
             Authorization: `Bearer ${idToken}`,
           },
         })
-        const data = await response.json()
+        const data = await parseJsonResponse(response)
         if (response.ok) {
           successCount += 1
-          lastResult = data as ConfirmResult
+          lastResult = toConfirmResult(data)
         }
       }
 
@@ -211,9 +221,9 @@ export default function AdminIntakePage() {
           email,
         }),
       })
-      const data = await response.json()
+      const data = await parseJsonResponse(response)
       if (!response.ok) {
-        throw new Error(data?.error || 'intakeリンクの発行に失敗しました')
+        throw new Error(getErrorMessage(data, 'intakeリンクの発行に失敗しました'))
       }
 
       setCreatedIntakeUrl(String(data.intakeUrl || ''))
