@@ -1,14 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Vercel デプロイ最適化設定
-  output: 'standalone',
-  
-  // Firebase Functions フォルダを除外
-  outputFileTracingExcludes: {
-    '*': ['./functions/**/*'],
-  },
-  
   // 画像最適化
   images: {
     domains: ['firebasestorage.googleapis.com'],
