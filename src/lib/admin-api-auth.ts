@@ -57,10 +57,23 @@ export async function authenticateAdminApiRequest(request: NextRequest): Promise
     throw new Error('認証トークンが必要です')
   }
 
-  const decoded = await adminAuth().verifyIdToken(token)
+  let decoded: { uid: string; email?: string; role?: unknown; admin?: unknown }
+  try {
+    decoded = await adminAuth().verifyIdToken(token)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    throw new Error(`認証トークンの検証に失敗しました: ${message}`)
+  }
+
   const email = decoded.email || ''
-  const userDoc = await adminFirestore().collection('users').doc(decoded.uid).get()
-  const userData = userDoc.exists ? (userDoc.data() as Record<string, unknown>) : {}
+  let userData: Record<string, unknown> = {}
+  try {
+    const userDoc = await adminFirestore().collection('users').doc(decoded.uid).get()
+    userData = userDoc.exists ? (userDoc.data() as Record<string, unknown>) : {}
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    throw new Error(`認証ユーザー情報の取得に失敗しました: ${message}`)
+  }
 
   return {
     uid: decoded.uid,
