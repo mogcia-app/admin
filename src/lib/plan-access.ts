@@ -4,46 +4,37 @@ export type ActivePlanTier = 'basic' | 'standard' | 'pro'
 export type LegacyPlanTier = 'ume' | 'take' | 'matsu'
 export type PlanTier = ActivePlanTier | LegacyPlanTier
 
-// プラン階層の定義
+// 現行仕様では通常機能は全プラン共通で利用可能。
+// プラン差分は AI 利用回数側で管理し、このファイルでは料金や表示名、
+// 既存呼び出しとの互換用の共通アクセス定義のみを扱う。
+const COMMON_PLAN_FEATURES = {
+  canAccessLab: true,
+  canAccessPosts: true,
+  canAccessAnalytics: true,
+  canAccessPlan: true,
+  canAccessReport: true,
+  canAccessKPI: true,
+  canAccessLearning: true,
+} as const
+
+export type PlanFeatureKey = keyof typeof COMMON_PLAN_FEATURES
+
+// プラン定義
 export const PLAN_CONFIG = {
   basic: {
     name: 'ベーシックプラン',
     monthlyFee: 15000,
-    features: {
-      canAccessLab: true,
-      canAccessPosts: false,
-      canAccessAnalytics: false,
-      canAccessPlan: false,
-      canAccessReport: false,
-      canAccessKPI: false,
-      canAccessLearning: false,
-    },
+    features: COMMON_PLAN_FEATURES,
   },
   standard: {
     name: 'スタンダードプラン',
     monthlyFee: 30000,
-    features: {
-      canAccessLab: true,
-      canAccessPosts: true,
-      canAccessAnalytics: false,
-      canAccessPlan: false,
-      canAccessReport: false,
-      canAccessKPI: false,
-      canAccessLearning: false,
-    },
+    features: COMMON_PLAN_FEATURES,
   },
   pro: {
     name: 'プロプラン',
     monthlyFee: 60000,
-    features: {
-      canAccessLab: true,
-      canAccessPosts: true,
-      canAccessAnalytics: true,
-      canAccessPlan: true,
-      canAccessReport: true,
-      canAccessKPI: true,
-      canAccessLearning: true,
-    },
+    features: COMMON_PLAN_FEATURES,
   },
 } as const
 
@@ -85,17 +76,17 @@ export function getUserPlanTier(user: User | null | undefined): ActivePlanTier {
  */
 export function canAccessFeature(
   user: User | null | undefined,
-  feature: keyof typeof PLAN_FEATURES.basic
+  feature: PlanFeatureKey
 ): boolean {
   const tier = getUserPlanTier(user)
   return PLAN_FEATURES[tier][feature]
 }
 
 /**
- * プラン階層に基づいてアクセス拒否メッセージを取得
+ * 現行仕様では通常機能にプラン差分を設けないため、主に後方互換用。
  */
 export function getAccessDeniedMessage(feature: string): string {
-  return `${feature}機能は、現在のプランではご利用いただけません。プランのアップグレードをご検討ください。`
+  return `${feature}機能は契約状態または権限設定をご確認ください。`
 }
 
 /**
@@ -157,5 +148,4 @@ export function billingPlanToPlanTier(plan: 'light' | 'standard' | 'professional
   }
   return mapping[plan]
 }
-
 
