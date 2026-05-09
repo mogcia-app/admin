@@ -1,6 +1,6 @@
 import { createHash, createHmac, randomBytes, randomUUID } from 'crypto'
 import { adminFirestore } from '@/lib/firebase-admin-server'
-import type { TermsAgreementStatus, TermsConsentSummary, TermsFlowType } from '@/types'
+import type { TermsAgreementStatus, TermsConsentSummary, TermsFlowType } from '@/types/index'
 
 interface TermsLinkTokenPayload {
   userId: string
