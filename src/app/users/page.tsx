@@ -46,6 +46,13 @@ interface OnboardingMeta {
   signalToolAccessUrl: string
   signalInviteExpiresAt: string
   onboardingIntakeToken: string
+  termsAgreementUrl: string
+  termsAgreementExpiresAt: string
+  salesChannel: string
+  termsFlowType: string
+  termsAgreementStatus: string
+  termsAgreedAt: string
+  termsVersion: string
   submittedData?: Record<string, unknown> | null
 }
 
@@ -98,6 +105,9 @@ export default function UsersPage() {
   const [inviteLink, setInviteLink] = useState('')
   const [inviteExpiresAt, setInviteExpiresAt] = useState('')
   const [inviteGenerating, setInviteGenerating] = useState(false)
+  const [termsLink, setTermsLink] = useState('')
+  const [termsLinkExpiresAt, setTermsLinkExpiresAt] = useState('')
+  const [termsLinkGenerating, setTermsLinkGenerating] = useState(false)
   const [planTierDraft, setPlanTierDraft] = useState<PlanTierOption>('basic')
   const [planTierReason, setPlanTierReason] = useState('')
   const [showPlanTierReasonModal, setShowPlanTierReasonModal] = useState(false)
@@ -398,6 +408,8 @@ export default function UsersPage() {
     setSelectedUser(user)
     setInviteLink('')
     setInviteExpiresAt('')
+    setTermsLink('')
+    setTermsLinkExpiresAt('')
     setPlanTierDraft(normalizePlanTier(user.planTier))
     setPlanTierReason('')
     setAiUsageMonth(getMonthKey(0))
@@ -441,6 +453,13 @@ export default function UsersPage() {
           signalToolAccessUrl: String(data.signalToolAccessUrl || ''),
           signalInviteExpiresAt: String(data.signalInviteExpiresAt || ''),
           onboardingIntakeToken: String(data.onboardingIntakeToken || ''),
+          termsAgreementUrl: String(data.termsAgreementUrl || ''),
+          termsAgreementExpiresAt: String(data.termsAgreementExpiresAt || ''),
+          salesChannel: String(data.salesChannel || 'direct'),
+          termsFlowType: String(data.termsFlowType || 'required'),
+          termsAgreementStatus: String(data.termsAgreementStatus || 'pending'),
+          termsAgreedAt: String(data.termsAgreedAt || ''),
+          termsVersion: String(data.termsVersion || ''),
           submittedData: (data.submittedData as Record<string, unknown>) || null,
         })
       } catch {
@@ -519,6 +538,77 @@ export default function UsersPage() {
     }
   }
 
+  const generateTermsLink = async (targetUser: User) => {
+    try {
+      setTermsLinkGenerating(true)
+      const idToken = await currentAdminUser?.getIdToken()
+      if (!idToken) throw new Error('認証トークンの取得に失敗しました')
+
+      const response = await fetch(`/api/admin/users/${targetUser.id}/terms-link`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          flowType: targetUser.termsFlowType || 'required',
+          expiresInMinutes: 10080,
+        }),
+      })
+
+      const data = await parseJsonResponse(response)
+      if (!response.ok) throw new Error(getErrorMessage(data, '規約URLの発行に失敗しました'))
+
+      const nextUrl = String(data.agreementUrl || '')
+      const nextExpiresAt = String(data.expiresAt || '')
+      const nextVersion = String(data.version || targetUser.termsVersion || '')
+
+      setTermsLink(nextUrl)
+      setTermsLinkExpiresAt(nextExpiresAt)
+      setSelectedUser((prev) =>
+        prev
+          ? {
+              ...prev,
+              termsAgreementUrl: nextUrl,
+              termsAgreementExpiresAt: nextExpiresAt,
+              termsVersion: nextVersion,
+              termsAgreementStatus: prev.termsFlowType === 'required' ? 'pending' : 'not_required',
+            }
+          : prev
+      )
+      setOnboardingMeta((prev) => ({
+        onboardingInitialPassword: prev?.onboardingInitialPassword || '',
+        signalToolAccessUrl: prev?.signalToolAccessUrl || '',
+        signalInviteExpiresAt: prev?.signalInviteExpiresAt || '',
+        onboardingIntakeToken: prev?.onboardingIntakeToken || '',
+        termsAgreementUrl: nextUrl,
+        termsAgreementExpiresAt: nextExpiresAt,
+        salesChannel: prev?.salesChannel || 'direct',
+        termsFlowType: prev?.termsFlowType || targetUser.termsFlowType || 'required',
+        termsAgreementStatus: (prev?.termsFlowType || targetUser.termsFlowType || 'required') === 'required' ? 'pending' : 'not_required',
+        termsAgreedAt: prev?.termsAgreedAt || '',
+        termsVersion: nextVersion,
+      }))
+      alert('規約URLを発行しました')
+    } catch (err) {
+      alert('規約URLの発行に失敗しました: ' + (err instanceof Error ? err.message : '不明なエラー'))
+    } finally {
+      setTermsLinkGenerating(false)
+    }
+  }
+
+  const updateTermsFlow = async (updates: Partial<User>, successMessage: string) => {
+    if (!selectedUser) return
+
+    try {
+      await userService.updateUser(selectedUser.id, updates)
+      setSelectedUser({ ...selectedUser, ...updates, updatedAt: new Date().toISOString() })
+      alert(successMessage)
+    } catch (err) {
+      alert('規約設定の更新に失敗しました: ' + (err instanceof Error ? err.message : '不明なエラー'))
+    }
+  }
+
   const regenerateInitialPassword = async (targetUser: User) => {
     try {
       setIsRegeneratingInitialPassword(true)
@@ -543,6 +633,13 @@ export default function UsersPage() {
         signalToolAccessUrl: prev?.signalToolAccessUrl || '',
         signalInviteExpiresAt: prev?.signalInviteExpiresAt || '',
         onboardingIntakeToken: prev?.onboardingIntakeToken || '',
+        termsAgreementUrl: prev?.termsAgreementUrl || '',
+        termsAgreementExpiresAt: prev?.termsAgreementExpiresAt || '',
+        salesChannel: prev?.salesChannel || 'direct',
+        termsFlowType: prev?.termsFlowType || 'required',
+        termsAgreementStatus: prev?.termsAgreementStatus || 'pending',
+        termsAgreedAt: prev?.termsAgreedAt || '',
+        termsVersion: prev?.termsVersion || '',
       }))
       alert('初期パスワードを再発行しました')
     } catch (err) {
@@ -556,6 +653,13 @@ export default function UsersPage() {
   const displayInitialPassword = selectedUser?.onboardingInitialPassword || onboardingMeta?.onboardingInitialPassword || ''
   const displayInviteUrl = selectedUser?.signalToolAccessUrl || onboardingMeta?.signalToolAccessUrl || ''
   const displayInviteExpiresAt = selectedUser?.signalInviteExpiresAt || onboardingMeta?.signalInviteExpiresAt || ''
+  const displayTermsUrl = termsLink || selectedUser?.termsAgreementUrl || onboardingMeta?.termsAgreementUrl || ''
+  const displayTermsExpiresAt = termsLinkExpiresAt || selectedUser?.termsAgreementExpiresAt || onboardingMeta?.termsAgreementExpiresAt || ''
+  const displayTermsStatus = selectedUser?.termsAgreementStatus || onboardingMeta?.termsAgreementStatus || 'pending'
+  const displayTermsVersion = selectedUser?.termsVersion || onboardingMeta?.termsVersion || '-'
+  const displaySalesChannel = selectedUser?.salesChannel || onboardingMeta?.salesChannel || 'direct'
+  const displayTermsFlowType = selectedUser?.termsFlowType || onboardingMeta?.termsFlowType || 'required'
+  const displayTermsAgreedAt = selectedUser?.termsAgreedAt || onboardingMeta?.termsAgreedAt || ''
   const snsPurposeText =
     selectedUser?.snsAISettings?.instagram?.whyThisSNS ||
     selectedUser?.snsAISettings?.instagram?.snsGoal ||
@@ -1038,6 +1142,9 @@ export default function UsersPage() {
                     <p><span className="font-medium">利用形態:</span> {getUsageTypeLabel(selectedUser.usageType)}</p>
                     <p><span className="font-medium">契約タイプ:</span> {getContractTypeLabel(selectedUser.contractType)}</p>
                     <p><span className="font-medium">ステータス:</span> {getStatusLabel(selectedUser.status)}</p>
+                    <p><span className="font-medium">販売チャネル:</span> {displaySalesChannel === 'agency' ? '代理店経由' : '自社直販'}</p>
+                    <p><span className="font-medium">規約フロー:</span> {displayTermsFlowType === 'external_contract' ? '代理店側契約' : displayTermsFlowType === 'exempt' ? '免除' : '同意必須'}</p>
+                    <p><span className="font-medium">規約同意:</span> {displayTermsStatus === 'agreed' ? '同意済み' : displayTermsStatus === 'not_required' ? '不要' : displayTermsStatus === 'revoked' ? '失効' : '未同意'}</p>
                     {canManagePlanTier && (
                       <div className="mt-4 p-3 border border-slate-200 rounded-md space-y-2">
                         <p className="font-medium">プラン設定（AI利用制限）</p>
@@ -1187,6 +1294,48 @@ export default function UsersPage() {
                               onClick={() => copyMetaValue('onboardingInitialPassword', displayInitialPassword)}
                             >
                               {copiedMetaKey === 'onboardingInitialPassword' ? 'コピーしました' : 'コピー'}
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <div className="mt-4 p-3 bg-muted rounded-md">
+                      <p className="font-medium mb-2">規約同意URL</p>
+                      <p className="text-xs text-muted-foreground mb-3">
+                        自社直販ユーザー向けの規約同意ページです。代理店経由の場合は「代理店側契約」に切り替えてください。
+                      </p>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Button
+                          size="sm"
+                          onClick={() => generateTermsLink(selectedUser)}
+                          disabled={termsLinkGenerating || displayTermsFlowType !== 'required'}
+                        >
+                          {termsLinkGenerating ? '生成中...' : '規約URLを生成（7日）'}
+                        </Button>
+                      </div>
+                      <div className="space-y-1 text-xs mb-2">
+                        <p><span className="font-medium">状態:</span> {displayTermsStatus === 'agreed' ? '同意済み' : displayTermsStatus === 'not_required' ? '不要' : displayTermsStatus === 'revoked' ? '失効' : '未同意'}</p>
+                        <p><span className="font-medium">バージョン:</span> {displayTermsVersion}</p>
+                        <p><span className="font-medium">同意日時:</span> {displayTermsAgreedAt ? new Date(displayTermsAgreedAt).toLocaleString('ja-JP') : '-'}</p>
+                      </div>
+                      {displayTermsUrl && (
+                        <div className="space-y-2">
+                          <input
+                            type="text"
+                            value={displayTermsUrl}
+                            readOnly
+                            className="w-full px-2 py-1 text-xs bg-background border border-border rounded"
+                          />
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs text-muted-foreground">
+                              有効期限: {displayTermsExpiresAt ? new Date(displayTermsExpiresAt).toLocaleString('ja-JP') : '-'}
+                            </span>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => copyMetaValue('termsAgreementUrl', displayTermsUrl)}
+                            >
+                              {copiedMetaKey === 'termsAgreementUrl' ? 'コピーしました' : 'コピー'}
                             </Button>
                           </div>
                         </div>
@@ -1345,6 +1494,57 @@ export default function UsersPage() {
 
               {detailTab === 'ops' && (
               <div className="space-y-6">
+              <div className="border-t pt-4">
+                <h3 className="font-medium mb-3">規約運用</h3>
+                <div className="flex gap-2 flex-wrap mb-4">
+                  <Button
+                    onClick={() =>
+                      updateTermsFlow(
+                        {
+                          salesChannel: 'direct',
+                          termsFlowType: 'required',
+                          termsAgreementStatus: selectedUser.termsAgreementStatus === 'agreed' ? 'agreed' : 'pending',
+                        },
+                        '自社直販フローに更新しました'
+                      )
+                    }
+                    variant={displaySalesChannel === 'direct' && displayTermsFlowType === 'required' ? 'outline' : 'default'}
+                  >
+                    自社直販フローにする
+                  </Button>
+                  <Button
+                    onClick={() =>
+                      updateTermsFlow(
+                        {
+                          salesChannel: 'agency',
+                          termsFlowType: 'external_contract',
+                          termsAgreementStatus: 'not_required',
+                        },
+                        '代理店側契約フローに更新しました'
+                      )
+                    }
+                    variant={displaySalesChannel === 'agency' && displayTermsFlowType === 'external_contract' ? 'outline' : 'default'}
+                  >
+                    代理店側契約にする
+                  </Button>
+                  <Button
+                    onClick={() =>
+                      updateTermsFlow(
+                        {
+                          termsAgreementStatus: 'agreed',
+                          termsAgreedAt: new Date().toISOString(),
+                          termsConsentSource: 'admin_manual',
+                        },
+                        '管理者確認で同意済みに更新しました'
+                      )
+                    }
+                    variant="outline"
+                  >
+                    管理者確認で同意済みにする
+                  </Button>
+                </div>
+              </div>
+
               <div className="border-t pt-4">
                 <h3 className="font-medium mb-3">支払い確認・アクセス管理</h3>
                 <div className="flex gap-2 flex-wrap mb-4">

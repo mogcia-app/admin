@@ -97,6 +97,9 @@ export const userService = {
         status: userData.status || 'active',
         contractStartDate: userData.contractStartDate || new Date().toISOString(),
         contractEndDate: userData.contractEndDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        salesChannel: userData.salesChannel || 'direct',
+        termsFlowType: userData.termsFlowType || 'required',
+        termsAgreementStatus: userData.termsAgreementStatus || 'pending',
         // 招待リンクは短命・ワンタイムで都度生成するため恒久URLは保存しない
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()

@@ -40,6 +40,13 @@ export async function GET(request: NextRequest, context: { params: Promise<{ uid
       signalToolAccessUrl: String(userData.signalToolAccessUrl || ''),
       signalInviteExpiresAt: String(userData.signalInviteExpiresAt || ''),
       onboardingIntakeToken: String(userData.onboardingIntakeToken || ''),
+      termsAgreementUrl: String(userData.termsAgreementUrl || ''),
+      termsAgreementExpiresAt: String(userData.termsAgreementExpiresAt || ''),
+      salesChannel: String(userData.salesChannel || 'direct'),
+      termsFlowType: String(userData.termsFlowType || 'required'),
+      termsAgreementStatus: String(userData.termsAgreementStatus || 'pending'),
+      termsAgreedAt: String(userData.termsAgreedAt || ''),
+      termsVersion: String(userData.termsVersion || ''),
       submittedData: null as Record<string, unknown> | null,
     }
 
@@ -84,6 +91,13 @@ export async function GET(request: NextRequest, context: { params: Promise<{ uid
       signalToolAccessUrl: inviteData ? String(inviteData.signalInviteUrl || '') : '',
       signalInviteExpiresAt: inviteData ? String(inviteData.signalInviteExpiresAt || '') : '',
       onboardingIntakeToken: inviteData ? String(inviteData.token || '') : '',
+      termsAgreementUrl: String(userData.termsAgreementUrl || ''),
+      termsAgreementExpiresAt: String(userData.termsAgreementExpiresAt || ''),
+      salesChannel: String(userData.salesChannel || 'direct'),
+      termsFlowType: String(userData.termsFlowType || 'required'),
+      termsAgreementStatus: String(userData.termsAgreementStatus || 'pending'),
+      termsAgreedAt: String(userData.termsAgreedAt || ''),
+      termsVersion: String(userData.termsVersion || ''),
       submittedData: inviteData ? ((inviteData.submittedData as Record<string, unknown>) || null) : null,
     })
   } catch (error) {

@@ -1,3 +1,14 @@
+export type SalesChannel = 'direct' | 'agency'
+export type TermsFlowType = 'required' | 'external_contract' | 'exempt'
+export type TermsAgreementStatus = 'pending' | 'agreed' | 'not_required' | 'revoked'
+
+export interface TermsConsentSummary {
+  status: TermsAgreementStatus
+  agreedAt?: string
+  version?: string
+  source?: 'admin_link' | 'admin_manual' | 'legacy_import'
+}
+
 export interface User {
   id: string // Firebase Auth UID
   name: string
@@ -37,6 +48,17 @@ export interface User {
   signalInviteExpiresAt?: string // 招待リンク有効期限
   onboardingInitialPassword?: string // 初回案内用に発行したランダムパスワード
   onboardingIntakeToken?: string // 元になった intake トークン
+  salesChannel?: SalesChannel
+  termsFlowType?: TermsFlowType
+  termsAgreementStatus?: TermsAgreementStatus
+  termsAgreedAt?: string
+  termsVersion?: string
+  termsAgreementUrl?: string
+  termsAgreementExpiresAt?: string
+  termsConsentSource?: 'admin_link' | 'admin_manual' | 'legacy_import'
+  privacyPolicyConsent?: TermsConsentSummary
+  toolTermsConsent?: TermsConsentSummary
+  memberSiteTermsConsent?: TermsConsentSummary
   // 支払い確認・アクセス制御（会員サイト側の登録フロー用）
   initialPaymentConfirmed?: boolean // 初期費用確認済み
   firstMonthPaymentConfirmed?: boolean // 初月分確認済み

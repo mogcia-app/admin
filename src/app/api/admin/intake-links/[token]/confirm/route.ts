@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { adminAuth, adminFirestore } from '@/lib/firebase-admin-server'
 import { authenticateAdminApiRequest, assertRoleAllowed } from '@/lib/admin-api-auth'
 import { createSignalInviteLink } from '@/lib/signal-invite-link'
+import { createTermsAgreementLink } from '@/lib/terms-link'
 
 function toIsoDate(input: string): string {
   const date = new Date(input)
@@ -208,12 +209,26 @@ export async function POST(request: NextRequest, context: { params: Promise<{ to
       createdByRole: actor.role,
       expiresInMinutes: 1440,
     })
+    const termsLink = await createTermsAgreementLink({
+      userId: uid,
+      userEmail: email,
+      createdBy: actor.email || actor.uid,
+      createdByRole: actor.role,
+      flowType: 'required',
+      expiresInMinutes: 10080,
+    })
 
     await adminFirestore().collection('users').doc(uid).set(
       {
         signalToolAccessUrl: inviteLink.inviteUrl,
         signalInviteExpiresAt: inviteLink.expiresAt,
         onboardingIntakeToken: token,
+        salesChannel: 'direct',
+        termsFlowType: 'required',
+        termsAgreementStatus: 'pending',
+        termsVersion: termsLink.version,
+        termsAgreementUrl: termsLink.agreementUrl,
+        termsAgreementExpiresAt: termsLink.expiresAt,
         updatedAt: new Date().toISOString(),
       },
       { merge: true }
@@ -260,6 +275,8 @@ export async function POST(request: NextRequest, context: { params: Promise<{ to
       email,
       signalInviteUrl: inviteLink.inviteUrl,
       signalInviteExpiresAt: inviteLink.expiresAt,
+      termsAgreementUrl: termsLink.agreementUrl,
+      termsAgreementExpiresAt: termsLink.expiresAt,
     })
   } catch (error) {
     if (error instanceof Error) {

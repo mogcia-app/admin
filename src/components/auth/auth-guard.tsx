@@ -14,8 +14,9 @@ export function AuthGuard({ children }: AuthGuardProps) {
   const { user, adminUser, loading } = useAuth()
   const pathname = usePathname()
   const isPublicIntake = pathname?.startsWith('/intake/')
+  const isPublicTerms = pathname?.startsWith('/terms/')
 
-  if (isPublicIntake) {
+  if (isPublicIntake || isPublicTerms) {
     return <>{children}</>
   }
 
